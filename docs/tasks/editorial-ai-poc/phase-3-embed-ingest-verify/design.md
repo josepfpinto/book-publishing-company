@@ -56,7 +56,7 @@ Plan: [`editorial-ai-poc.plan.md`](../../editorial-ai-poc.plan.md) §4 — Chrom
 - [ ] ChromaDB `books` collection contains chunks with correct metadata (verifiable via `collection.count()`)
 - [ ] No `None` or `""` values in stored metadata
 - [ ] `embed_texts()` batches in groups of ≤ 100 (no single-text-per-call loop)
-- [ ] `parser-probe.py` deleted after gate passes
+- [x] `parser-probe.py` deleted after gate passes
 
 ## Out of scope
 

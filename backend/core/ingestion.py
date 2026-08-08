@@ -1,7 +1,10 @@
 """HTML parser and chapter-aware chunker for Project Gutenberg books.
 
-Implements all six DOM-defect fixes documented in plan §4.
-Parser logic translated directly from docs/tasks/editorial-ai-poc.parser-probe.py.
+Implements all six DOM-defect fixes documented in plan §4, which is the
+authoritative specification. Parser logic was originally translated from the
+Phase 3 parser probe, since deleted.
+
+Behaviour is pinned by tests/test_ingestion.py.
 """
 from __future__ import annotations
 
@@ -253,26 +256,3 @@ def ingest_book(html_path: str, book_id: str, book_title: str) -> list[dict]:
     """Parse + chunk a book. Sets excerpt: '' as placeholder (citations.py fills it)."""
     paragraphs = parse_book(html_path, book_id, book_title)
     return chunk_book(paragraphs)
-
-
-if __name__ == "__main__":
-    import pathlib
-
-    BASE = pathlib.Path(__file__).parent.parent.parent / "books shared"
-
-    for path, bid, btitle, expected_chapters in [
-        (BASE / "little_women.html", "little_women", "Little Women", 47),
-        (
-            BASE / "pride_prejudice.html",
-            "pride_prejudice",
-            "Pride and Prejudice",
-            61,
-        ),
-    ]:
-        chunks = ingest_book(str(path), bid, btitle)
-        actual_chapters = len({c["chapter_number"] for c in chunks})
-        total = len(chunks)
-        assert actual_chapters == expected_chapters, (
-            f"{btitle}: got {actual_chapters} chapters, expected {expected_chapters}"
-        )
-        print(f"{btitle}: {actual_chapters} chapters OK | {total} chunks")

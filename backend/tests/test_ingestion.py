@@ -42,6 +42,22 @@ def test_chapter_count_pp(all_chunks):
     assert chapters == set(range(1, 62)), f"Expected chapters 1-61, got {sorted(chapters)}"
 
 
+def test_chapter_title_convention(all_chunks):
+    """LW chapters carry real titles; P&P falls back to `Chapter {n}`.
+
+    This is what `compose_heading()` keys off to suppress the redundant
+    dash-title (plan §4 Citation schema), so the convention is a contract,
+    not an incidental.
+    """
+    for c in all_chunks:
+        title, fallback = c["chapter_title"], f"Chapter {c['chapter_number']}"
+        if c["book_id"] == "pride_prejudice":
+            assert title == fallback, f"{_label(c)} expected fallback title, got {title!r}"
+        else:
+            assert title != fallback, f"{_label(c)} lost its real chapter title"
+            assert title.strip(), f"{_label(c)} has a blank chapter_title"
+
+
 def test_no_page_number_leakage(all_chunks):
     pattern = re.compile(r"\{[\divxlcIVXLC]+\}")
     for c in all_chunks:

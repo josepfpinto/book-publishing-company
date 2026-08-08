@@ -12,10 +12,11 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 ## Tasks
 
 - [x] **T1** `[AGENT]` Write `backend/core/ingestion.py` — Note: per-paragraph page tracking (not chapter-wide); smoke test asserts on failure
-  - **Output:** `backend/core/ingestion.py` — exports `parse_book()`, `chunk_book()`, `ingest_book()`; produces a list of chunk dicts matching the schema below; smoke-test block prints correct chapter counts
+  - **Output:** `backend/core/ingestion.py` — exports `parse_book()`, `chunk_book()`, `ingest_book()`; produces a list of chunk dicts matching the schema below; correct chapter counts asserted by `tests/test_ingestion.py`
   - **Complexity:** Standard
   - **Depends on:** —
-  - **Done when:** `ingest_book()` returns chunks from 47 LW chapters and 61 P&P chapters; no `None` values in any chunk dict; smoke-test `__main__` block runs without error
+  - **Done when:** `ingest_book()` returns chunks from 47 LW chapters and 61 P&P chapters; no `None` values in any chunk dict
+  - **Post-story note:** the `__main__` smoke block described below was superseded by `tests/test_ingestion.py` (which asserts the exact chapter *set*, not just the count) and removed. The parser probe it references has also been deleted — plan §4 is now authoritative.
 
   ---
 
@@ -76,7 +77,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   ### Human review checklist
   - [x] Each of the 6 defects in plan §4 has a corresponding fix (check the defect table row by row against the code)
   - [x] Chunk dict schema matches exactly — no `None` values, optional keys absent when not applicable, `text` key present
-  - [x] Smoke-test `__main__` block prints `47 chapters` for LW and `61 chapters` for P&P
+  - [x] Chapter counts are `47` for LW and `61` for P&P — now asserted by `tests/test_ingestion.py` (was the `__main__` smoke block, since removed)
   - [x] Chunking never splits mid-paragraph (read one chapter's chunk list and verify paragraph boundaries)
 
   ### If validation fails
@@ -87,7 +88,8 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 ---
 
 - [x] **T2** `[AGENT]` Write `backend/core/citations.py` — Note: _SENT regex matches probe exactly (U+201D + U+0022); all 4 heading forms verified
-  - **Output:** `backend/core/citations.py` — exports `build_excerpt()`, `compose_heading()`, `populate_excerpts()`; `__main__` assertions produce correct heading forms for both book types
+  - **Output:** `backend/core/citations.py` — exports `build_excerpt()`, `compose_heading()`, `populate_excerpts()`; correct heading forms for both book types asserted by `tests/test_citations.py`
+  - **Post-story note:** the `__main__` assertions below were the only coverage `compose_heading()` ever had, and CI never ran them. Migrated to `tests/test_citations.py`; the block was removed. Migration also surfaced a defect in `build_excerpt()` — see the `target` guard note in plan §4 Excerpt rule.
   - **Complexity:** Standard
   - **Depends on:** T1 (imports chunk dict schema from `ingestion.py`)
   - **Done when:** `compose_heading()` produces all three canonical forms from plan §4; `build_excerpt()` always ends on sentence punctuation or `…`; `populate_excerpts()` overwrites `excerpt: ""` placeholders in chunk dicts
@@ -155,7 +157,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   ## Validation
 
   ### Human review checklist
-  - [x] `compose_heading()` produces all four canonical forms from the `__main__` assertions
+  - [x] `compose_heading()` produces all four canonical forms — now parametrized in `tests/test_citations.py`
   - [x] `build_excerpt()` ends on sentence punctuation (`.`, `!`, `?`, `"`) — never mid-word (test with a multi-sentence string)
   - [x] Neither function has book-specific branching — metadata-conditional logic only
   - [x] The two cosmetic artifacts (double-quote, small-caps) are NOT worked around

@@ -3,7 +3,7 @@ name: phase-3-parse-cite
 plan: editorial-ai-poc
 phase: "phase-3"
 type: story
-status: pending
+status: done
 ---
 
 # Parse + Cite — Design
@@ -39,7 +39,8 @@ Plan: [`editorial-ai-poc.plan.md`](../../editorial-ai-poc.plan.md) §4 — Book 
 - `ingestion.py` exports three functions: `parse_book()`, `chunk_book()`, `ingest_book()` (convenience wrapper). The parser-probe (`docs/tasks/editorial-ai-poc.parser-probe.py`) is the authoritative reference for all DOM manipulation — translate it directly, do not reinvent.
 - `citations.py` exports: `build_excerpt()`, `compose_heading()`, `populate_excerpts()`. The probe's `excerpt()` and `cite()` functions are the validated recipe.
 - `ingest_book()` sets `excerpt: ""` as a placeholder; `populate_excerpts()` in `citations.py` fills it. This keeps the DOM extraction and citation logic in separate, independently testable units.
-- Both modules include a `if __name__ == "__main__"` smoke-test block for inline validation during `/execute`.
+- ~~Both modules include a `if __name__ == "__main__"` smoke-test block for inline validation during `/execute`.~~ **Superseded.** The smoke blocks were this story's acceptance evidence but CI never ran them, and `compose_heading()` ended up with no coverage in the suite at all. Both were migrated to `tests/test_citations.py` and removed from the source modules. The migration also surfaced a defect in `build_excerpt()` — see plan §4 Excerpt rule.
+- The parser probe referenced above has since been **deleted** (plan §10 Phase 3). Plan §4 is now the authoritative specification for both modules.
 
 ## Main files to change
 
@@ -48,15 +49,17 @@ Plan: [`editorial-ai-poc.plan.md`](../../editorial-ai-poc.plan.md) §4 — Book 
 
 ## Acceptance criteria
 
-- [ ] `ingest_book("books/little_women.html", ...)` returns chunks from exactly 47 sequential chapters
-- [ ] `ingest_book("books/pride_prejudice.html", ...)` returns chunks from exactly 61 sequential chapters
-- [ ] No chunk text contains a page-number artifact matching `\{[\divxlcIVXLC]+\}`
-- [ ] No chunk text contains back-matter strings (`"The Works of Louisa May Alcott"`, `"Transcriber's Note"`, `"Project Gutenberg"`)
-- [ ] Every chapter's first chunk starts with an uppercase letter or quote mark
-- [ ] All required chunk dict keys (`book_id`, `book_title`, `chapter_number`, `chapter_title`, `chunk_index`, `contains_letter`, `excerpt`) are present; no value is `None`
-- [ ] `chapter_title` is the real title for LW chapters and `"Chapter {n}"` for P&P chapters
-- [ ] `compose_heading()` produces `Chapter N` (when `chapter_title == "Chapter N"` and no page) / `Chapter N — Title` (LW real title) / `Chapter N · p. X` / `Chapter N · pp. X–Y` correctly for all four cases
-- [ ] `build_excerpt()` always ends on sentence punctuation (`.`, `!`, `?`, `"`) or `…`, never mid-word
+All verified by automated tests — `tests/test_ingestion.py` covers 1–7, `tests/test_citations.py` covers 8–9.
+
+- [x] `ingest_book("books/little_women.html", ...)` returns chunks from exactly 47 sequential chapters
+- [x] `ingest_book("books/pride_prejudice.html", ...)` returns chunks from exactly 61 sequential chapters
+- [x] No chunk text contains a page-number artifact matching `\{[\divxlcIVXLC]+\}`
+- [x] No chunk text contains back-matter strings (`"The Works of Louisa May Alcott"`, `"Transcriber's Note"`, `"Project Gutenberg"`)
+- [x] Every chapter's first chunk starts with an uppercase letter or quote mark
+- [x] All required chunk dict keys (`book_id`, `book_title`, `chapter_number`, `chapter_title`, `chunk_index`, `contains_letter`, `excerpt`) are present; no value is `None`
+- [x] `chapter_title` is the real title for LW chapters and `"Chapter {n}"` for P&P chapters — added later as `test_chapter_title_convention`; no test asserted it originally
+- [x] `compose_heading()` produces `Chapter N` (when `chapter_title == "Chapter N"` and no page) / `Chapter N — Title` (LW real title) / `Chapter N · p. X` / `Chapter N · pp. X–Y` correctly for all four cases
+- [x] `build_excerpt()` always ends on sentence punctuation (`.`, `!`, `?`, `"`) or `…`, never mid-word
 
 ## Out of scope
 

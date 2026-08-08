@@ -155,6 +155,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   - **Complexity:** Standard
   - **Depends on:** Story 1 T1 (ingestion.py); Story 1 T2 (citations.py)
   - **Done when:** all six test functions present with the exact names below; `pytest --collect-only` shows 6 tests; fixture uses `scope="module"`
+  - **Post-story note:** the gate is now **7** tests — `test_chapter_title_convention` was added later to cover plan §4 gate row 7 (the LW-real-title / P&P-fallback contract that `compose_heading()` keys off), which no test asserted. Unit coverage for the citation layer lives separately in `tests/test_citations.py`.
 
   ---
 
@@ -276,4 +277,4 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   - [ ] All 6 pytest tests pass
   - [ ] LW citation heading is `Chapter N — Title` format
   - [ ] P&P citation heading is `Chapter N · p. X` or `Chapter N · pp. X–Y` format
-  - [ ] `docs/tasks/editorial-ai-poc.parser-probe.py` deleted
+  - [x] `docs/tasks/editorial-ai-poc.parser-probe.py` deleted — completed after the story closed; the box was left unticked while the tracker was marked `done`

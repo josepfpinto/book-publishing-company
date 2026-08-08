@@ -1,36 +1,37 @@
 """Citation composition layer: excerpt builder and chapter heading composer.
 
-Translated directly from the excerpt() and cite() functions in
-docs/tasks/editorial-ai-poc.parser-probe.py, per plan §4 (Citation schema,
-Excerpt rule).
+Implements plan §4 (Citation schema, Excerpt rule). Originally translated from
+the excerpt() and cite() functions of the Phase 3 parser probe, which has since
+been deleted — plan §4 is now the authoritative specification.
+
+Behaviour is pinned by tests/test_citations.py (unit) and tests/test_ingestion.py
+(integration, against real parsed chapters).
 """
 from __future__ import annotations
 
 import re
 
 # sentence boundary: split after . ! ? ” (right curly quote) " (straight quote)
-# matches the probe's validated regex exactly: r'(?<=[.!?""])\s+'
+# U+201D + U+0022 are both required — the transcriptions mix them.
 _SENT = re.compile(r'(?<=[.!?”"])\s+')
 
 
-def build_excerpt(text: str, target: int = 230, minimum: int = 80) -> str:
+def build_excerpt(text: str, minimum: int = 80) -> str:
     """Extract >= 1 complete sentence from text.
 
-    Accumulates sentences until len(out) >= minimum, stops before target.
-    Appends '...' only if excerpt is shorter than the full text.
+    Accumulates whole sentences until len(out) >= minimum, then stops.
+    Appends '…' only if the excerpt is shorter than the full text.
     Never cuts mid-word — splits only on sentence boundaries.
+
+    The excerpt has no upper bound: a single sentence longer than `minimum`
+    is emitted whole rather than truncated, since cutting it would break the
+    "at least one complete sentence" contract (plan §4 Excerpt rule).
     """
-    sents = _SENT.split(text)
     out = ""
-    for s in sents:
-        if out and len(out) + len(s) + 1 > target:
-            break
+    for s in _SENT.split(text):
         out = (out + " " + s).strip()
         if len(out) >= minimum:
             break
-    if not out:
-        # fallback: at least one word-boundary-safe fragment
-        out = text[:target].rsplit(" ", 1)[0]
     return out + ("…" if len(out) < len(text.strip()) else "")
 
 
@@ -64,45 +65,3 @@ def populate_excerpts(chunks: list[dict]) -> list[dict]:
     for chunk in chunks:
         chunk["excerpt"] = build_excerpt(chunk["text"])
     return chunks
-
-
-if __name__ == "__main__":
-    # Canonical heading assertions from tasks.md and plan §4
-    cases = [
-        (
-            compose_heading(9, "Meg Goes to Vanity Fair", None, None),
-            "Chapter 9 — Meg Goes to Vanity Fair",
-        ),
-        (
-            compose_heading(26, "Chapter 26", "182", "183"),
-            "Chapter 26 · pp. 182–183",
-        ),
-        (
-            compose_heading(26, "Chapter 26", "182", None),
-            "Chapter 26 · p. 182",
-        ),
-        (
-            compose_heading(26, "Chapter 26", None, None),
-            "Chapter 26",
-        ),
-    ]
-    all_pass = True
-    for result, expected in cases:
-        ok = result == expected
-        status = "OK" if ok else "FAIL"
-        print(f"  [{status}] {repr(result)}")
-        if not ok:
-            print(f"        expected: {repr(expected)}")
-            all_pass = False
-    print("\nAll assertions:", "PASS" if all_pass else "FAIL")
-    assert all_pass, "heading assertions failed"
-
-    # excerpt smoke check
-    sample = ('It is a truth universally acknowledged, that a single man in possession '
-              'of a good fortune must be in want of a wife. However little known the '
-              'feelings or views of such a man may be on his first entering a neighbourhood, '
-              'this truth is so well fixed in the minds of the surrounding families.')
-    ex = build_excerpt(sample)
-    last = ex.rstrip("…")[-1]
-    assert last in '.!?""”', f"excerpt ends mid-word: {repr(ex[-20:])}"
-    print(f"\nexcerpt smoke: {repr(ex[:80])} ... OK")

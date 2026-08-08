@@ -248,6 +248,15 @@ ragas==0.2.*            # RAG evaluation framework (Phase 8.3)
 datasets==3.*           # required by ragas for golden set handling
 ```
 
+**Test dependencies live in `backend/requirements-dev.txt`**, not `requirements.txt` — shipping a test framework in the runtime image is dead weight. The Dockerfile takes `ARG INSTALL_DEV=false`; the `backend-test` compose service builds the same image with `INSTALL_DEV=true`:
+
+```bash
+docker compose --profile test run --rm backend-test   # full suite in the image
+pip install -r backend/requirements-dev.txt           # or locally
+```
+
+`backend-test` sits behind the `test` profile so `docker compose up` never starts it. On the host, `tests/test_citations.py` needs no setup; `tests/test_ingestion.py` needs `BOOKS_DIR="../books shared"` (inside the image the default `books` is already correct).
+
 ### Book ingestion (`ingest.py`)
 
 **Parsing strategy** — both books are Project Gutenberg HTML, but they are _different transcriptions_ with different conventions. Strategy below was prototyped against both files and passes all assertions (see "Ingestion verification gate").
@@ -287,7 +296,7 @@ datasets==3.*           # required by ragas for golden set handling
 
 **Why chapter-aware chunking matters**: raw paragraph chunking loses chapter context. Chapter metadata is what lets a source citation read "Chapter 9 — Meg Goes to Vanity Fair" rather than an anonymous chunk ID.
 
-**Chunk size — 500 tokens, not 1000.** Passage identification is one of the three demo scenarios (Phase 6) and `SourceCard` renders a short excerpt; a 1000-token chunk weakens both retrieval precision and the excerpt. ~500 tokens over both books ≈ 840 chunks total — trivial for Chroma.
+**Chunk size — 500 tokens, not 1000.** Passage identification is one of the three demo scenarios (Phase 6) and `SourceCard` renders a short excerpt; a 1000-token chunk weakens both retrieval precision and the excerpt. ~500 tokens over both books yields **803 chunks** (485 LW + 318 P&P) — trivial for Chroma.
 
 **ChromaDB setup**:
 
@@ -341,8 +350,11 @@ Every SourceCard shows **book title**, a **chapter line**, and **at least one co
 book_title                                                → ALWAYS
 "Chapter {n}"                                             → ALWAYS
 " — {chapter_title}"                                      → only if chapter_title != "Chapter {n}"
-" · p. {page_start}" | " · pp. {start}–{end}"            → only if page_start in metadata
+" · p. {page_start}"                                      → if page_start present and page_end absent or equal
+" · pp. {page_start}–{page_end}"                          → if both present and different
 ```
+
+`page_end` without a `page_start` is meaningless and is dropped — the heading degrades to the base form.
 
 Concretely, for the two books in this POC:
 
@@ -354,12 +366,15 @@ Concretely, for the two books in this POC:
 
 `Chapter {n}` on its own is a complete, correct citation. `chapter_title` is always stored so downstream code never needs a presence-check — it just reads the field.
 
-**Excerpt rule**: at least one _complete_ sentence, never cut mid-word. Split on sentence boundaries, accumulate until ~230 chars, stop at the first boundary past ~80 chars, append `…` only when genuinely truncated. Stored as the `excerpt` metadata field at ingestion so the frontend never re-derives it.
+**Excerpt rule**: at least one _complete_ sentence, never cut mid-word. Split on sentence boundaries, accumulate **whole sentences** until the excerpt reaches ~80 chars, then stop; append `…` only when genuinely truncated. Stored as the `excerpt` metadata field at ingestion so the frontend never re-derives it.
 
-Two cosmetic artifacts observed in the prototype render — both minor, neither blocking:
+**There is deliberately no upper length cap.** An earlier `target=230` guard stopped accumulating once the *next* sentence would breach 230 chars — but because the loop already exits the moment the minimum is met, that guard could only ever fire while the excerpt was still _below_ the minimum. Its sole observable effect was emitting sub-minimum excerpts — **58 of 803 chunks**, 26 of them under 40 chars, with six P&P chapters rendering as literally `"Mr.…"`. Removing the guard left the other 745 excerpts byte-identical. A single sentence longer than the minimum is now emitted whole, because truncating it would break the "at least one complete sentence" contract. Measured over both books: **median 140, p95 312, max 655 chars**. `SourceCard` must therefore clamp visually (CSS line-clamp), not rely on a length cap at ingestion.
+
+Three cosmetic artifacts observed in the prototype render — all minor, none blocking:
 
 - **Double quoting.** Many passages already begin with a dialogue quote, so wrapping the excerpt in quotation marks yields `""Christmas won't be Christmas…`. Style the excerpt with italics alone, or strip a leading quote before wrapping.
 - **Small-caps openings.** The transcriptions render the first words of a chapter in small caps as literal uppercase, so P&P chapter openings extract as `IT is a truth…` and `MRS. GARDINER'S caution…`. Faithful to the HTML but slightly odd on a card. Leave as-is for the POC; normalising is a regex over the first two words and carries a real risk of mangling genuine capitals.
+- **Abbreviations split as sentences.** The boundary regex `(?<=[.!?”"])\s+` cannot distinguish `Mr.` / `Mrs.` / `Dr.` / `St.` from a full stop, so the first fragment of a chapter opening on an honorific is 3 chars. Harmless now that accumulation continues until the minimum is met — the excerpt simply spans the abbreviation. Proper handling needs an abbreviation lookbehind or a real sentence tokenizer (`nltk.punkt` / `spaCy`); deferred, see §8.
 
 > **Why P&P has no chapter titles**: Alcott titled her chapters (all 47 in `p.h2a`); Austen numbered hers (all 61). A property of the novels, not the transcription — verified: P&P `<h2>` yields only "CHAPTER II.", the TOC lists bare numerals, and there are no `<h3>`/`<h4>` elements. So `docs/design/5-ai-response-sources.png` showing "Chapter 1 — The Entail" for P&P illustrates the card _shape_ with an invented title; the real card reads `Chapter 1 · p. 3`. Generating titles for P&P is Phase 8.1, deferred.
 
@@ -663,12 +678,16 @@ book-publishing-company/
 │   │   │   ├── books.py         # GET /api/books (sanity check; not consumed by UI)
 │   │   │   └── chat.py          # POST /api/chat (SSE) — all three book contexts
 │   │   └── deps.py             # Shared dependencies (ChromaDB client, AzureOpenAI client)
-│   └── core/
-│       ├── ingestion.py         # HTML parsing + chunking logic
-│       ├── embeddings.py        # Embedding helper (batch embed)
-│       ├── retrieval.py         # ChromaDB query + top-k retrieval
-│       ├── citations.py         # Excerpt builder (>=1 sentence) + heading composer
-│       └── prompts.py          # System prompt templates
+│   ├── requirements-dev.txt     # pytest — NOT installed into the runtime image
+│   ├── core/
+│   │   ├── ingestion.py         # HTML parsing + chunking logic
+│   │   ├── embeddings.py        # Embedding helper (batch embed)
+│   │   ├── retrieval.py         # ChromaDB query + top-k retrieval
+│   │   ├── citations.py         # Excerpt builder (>=1 sentence) + heading composer
+│   │   └── prompts.py           # System prompt templates
+│   └── tests/
+│       ├── test_ingestion.py    # Integration gate — parses both books (needs BOOKS_DIR)
+│       └── test_citations.py    # Unit — heading forms + excerpt rule, no fixtures
 ├── frontend/
 │   ├── Dockerfile
 │   ├── package.json
@@ -695,7 +714,10 @@ book-publishing-company/
 └── docs/
     ├── design/                  # Mowgli spec + 7 state screenshots
     └── tasks/
-        └── editorial-ai-poc.plan.md  # This file
+        ├── editorial-ai-poc.plan.md  # This file
+        └── editorial-ai-poc/         # Per-story scaffolding (design + tasks + tracker)
+            ├── phase-3-parse-cite/
+            └── phase-3-embed-ingest-verify/
 ```
 
 ---
@@ -709,6 +731,7 @@ book-publishing-company/
 | Persistent conversation history | In-memory per-request history only; no DB storage                                                                             |
 | Mobile / responsive UI          | Desktop-first per scope decision                                                                                              |
 | More than 2 books               | Dataset provided is 2 books — ingestion pipeline is generic                                                                   |
+| Abbreviation-aware sentence splitting | `(?<=[.!?”"])\s+` splits on `Mr.`/`Mrs.`/`Dr.`/`St.`. Cosmetically harmless now that excerpts accumulate to a minimum (§4), but a real tokenizer (`nltk.punkt`, `spaCy`) would be needed to make sentence counts exact |
 | ChromaDB server mode            | Embedded mode is sufficient for local single-backend POC                                                                      |
 | CI/CD                           | Local-only per requirements                                                                                                   |
 | Production deployment           | Local Docker only per requirements                                                                                            |
@@ -766,27 +789,34 @@ book-publishing-company/
 
 ### Phase 3 — Book Ingestion Pipeline
 
-- `[AGENT]` Write `backend/core/ingestion.py` — HTML parser + chapter-aware chunker, per the §4 defect table (anchor-based chapters, drop-cap recovery, page-number capture, caption exclusion, `p.nind` rejoin, `<h2>` chapter boundary)
-- `[AGENT]` Write `backend/core/citations.py` — `build_excerpt()` (≥ 1 complete sentence) + `compose_heading()` (graceful degradation per §4 Citation schema)
-- `[AGENT]` Write `backend/core/embeddings.py` — Azure OpenAI batch embedding helper
-- `[AGENT]` Write `backend/ingest.py` — CLI entrypoint: ingest both books into the `books` collection
-- `[AGENT]` Write `backend/tests/test_ingestion.py` — the ingestion verification gate below, as real tests over both books
+Delivered across two stories, both `done`: `phase-3-parse-cite` (PR #3) and `phase-3-embed-ingest-verify` (PR #4).
+
+- `DONE` Write `backend/core/ingestion.py` — HTML parser + chapter-aware chunker, per the §4 defect table (anchor-based chapters, drop-cap recovery, page-number capture, caption exclusion, `p.nind` rejoin, `<h2>` chapter boundary)
+- `DONE` Write `backend/core/citations.py` — `build_excerpt()` (≥ 1 complete sentence) + `compose_heading()` (graceful degradation per §4 Citation schema)
+- `DONE` Write `backend/core/embeddings.py` — Azure OpenAI batch embedding helper
+- `DONE` Write `backend/ingest.py` — CLI entrypoint: ingest both books into the `books` collection
+- `DONE` Write `backend/tests/test_ingestion.py` — the ingestion verification gate below, as real tests over both books
+- `DONE` Write `backend/tests/test_citations.py` — unit coverage for the citation layer: the four canonical heading forms, typographic separators, and the excerpt rule. The gate below is integration-only and never exercised `compose_heading()` directly.
 
 **Ingestion verification gate** — each assertion maps to a defect actually observed in these files. A bare chunk count would catch none of them:
 
 | #   | Assertion                                                                                                      | Catches                        |
 | --- | -------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | 1   | Chapter count `== 47` (LW) / `== 61` (P&P) **and** numbers are sequential `1..N`                               | Defect 5 — malformed headings  |
-| 2   | No chunk text matches `\{[\divxlc]+\}`                                                                         | Defect 1 — page-number leakage |
+| 2   | No chunk text matches `\{[\divxlcIVXLC]+\}` (both numeral cases — the transcription mixes them)                | Defect 1 — page-number leakage |
 | 3   | No chunk contains `"The Works of Louisa May Alcott"`, `"Transcriber's Note"`, `"Project Gutenberg"`            | Defect 4 — back-matter leakage |
 | 4   | Every chapter's first chunk starts with an uppercase letter or quote mark                                      | Defect 2 — drop-cap loss       |
 | 5   | Every chunk has `book_title`, `chapter_number`, `excerpt`; every `excerpt` ends on sentence punctuation or `…` | Citation contract              |
 | 6   | No metadata value is `None`                                                                                    | Chroma rejects null metadata   |
+| 7   | `chapter_title` is a real title for every LW chapter and exactly `"Chapter {n}"` for every P&P chapter         | Fallback-title contract that `compose_heading()` keys off |
+
+The gate is integration-only by design — it needs the book HTML. Pure-function behaviour (heading composition, the excerpt rule) is covered separately in `tests/test_citations.py`, which runs with no fixtures and cannot be taken down by a missing books directory.
 
 - `[MANUAL]` Run ingestion and verify: `docker compose run --rm backend python ingest.py`
 - `[MANUAL]` Confirm the gate passes and spot-check one LW and one P&P citation render correctly
+- `[MANUAL]` **Re-run ingestion after the excerpt fix** (§4 Excerpt rule). Excerpts are computed at ingest and stored as Chroma metadata, so any `data/chroma` volume populated before that fix still holds the sub-minimum values (`"Mr.…"` and 25 others). Delete the volume or re-run `ingest.py` to refresh them.
 
-> A working prototype lives at `docs/tasks/editorial-ai-poc.parser-probe.py` — it implements the full extraction + citation composition and passes assertions 1–4 on both books. It is a validated recipe for `ingestion.py`, **not production code**: no chunking, no batching, no error handling, hardcoded paths. Delete it once `core/ingestion.py` and `core/citations.py` exist.
+> **`docs/tasks/editorial-ai-poc.parser-probe.py` has been deleted** — it was the validated extraction + citation recipe that de-risked Phase 3, superseded once `core/ingestion.py` and `core/citations.py` shipped. Everything durable from it survives: the six DOM fixes in the §4 defect table, the sentence regex and heading rules in `core/citations.py`, and its assertions as `tests/test_ingestion.py`. Note its `excerpt()` carried the same `target` defect described in §4 — the bug was inherited from the recipe, not introduced in translation.
 
 ### Phase 4 — AI Assistant Backend
 
