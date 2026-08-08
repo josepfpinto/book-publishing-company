@@ -1,0 +1,178 @@
+Specification
+
+Overview
+Editorial AI: A focused research companion for editorial manuscript analysis.
+
+Editorial AI is a dedicated desktop web application designed for editorial teams at book publishing houses. It provides a focused, minimalist interface for querying and comparing two specific classic manuscripts—"Little Women" and "Pride Prejudice"—through natural language conversation. The tool offers instant, cited access to textual evidence with a calm, professional aesthetic that mirrors the editorial workflow. No authentication required; users simply open the URL and begin researching. The application is strictly hardcoded to these two titles, presenting a streamlined, single-purpose research environment that resets completely between sessions.
+
+User Journeys
+
+1. Initial Access and Engagement
+   1.1. Landing and Entry
+   1.1.1. User navigates to the application URL in a desktop web browser
+   1.1.2. System loads Editorial AI immediately without authentication barriers or login screens
+   1.1.3. System presents the MainChatInterface with BookToggle defaulting to "Both Books"
+   1.1.4. MessageList displays in empty state with welcome greeting and three suggested question buttons
+   1.2. Welcome State Interaction
+   1.2.1. User views concise greeting message from AI explaining readiness to discuss the books
+   1.2.2. User views three clickable suggested questions relevant to the two manuscripts:
+   "Compare the economic pressures faced by the March and Bennett families."
+   "How do Jo March and Elizabeth Bennet subvert gender roles?"
+   "Find passages illustrating the theme of marriage in the 19th century."
+   1.2.3. User either clicks a suggested question to auto-submit, or clicks into ChatInput to compose a custom query
+   1.3. Query Submission
+   1.3.1. System captures the currently selected BookToggle value as the context for this query
+   1.3.2. User message appears as UserMessage bubble in MessageList (right-aligned)
+   1.3.3. ChatInput clears and resets to single-line height
+   1.3.4. System initiates AI response generation and disables ChatInput to prevent concurrent queries
+2. AI Response and Source Retrieval
+   2.1. Initial Processing State
+   2.1.1. System inserts AssistantMessage placeholder in MessageList below the user query
+   2.1.2. Placeholder displays three animated pulsing dots indicating active generation
+   2.1.3. ChatInput remains disabled (visually dimmed) while generation is active
+   2.1.4. System transmits query to backend with selected book context parameter
+   2.2. Streaming Response
+   2.2.1. After initial processing delay, pulsing dots transition to streaming text
+   2.2.2. Text appears character-by-character within the left-aligned AssistantMessage bubble
+   2.2.3. MessageList auto-scrolls to maintain visibility of the generating content
+   2.2.4. ChatInput remains disabled throughout the streaming process
+   2.2.5. If "Both Books" was selected, streamed narrative blends information from both manuscripts into single coherent response
+   2.3. Completion and Citation Display
+   2.3.1. Upon stream completion, AssistantMessage displays final static text
+   2.3.2. System re-enables ChatInput, allowing new queries
+   2.3.3. System renders SourceCards row immediately below the AssistantMessage (left-aligned with the bubble above)
+   2.3.4. System displays maximum of 3 SourceCards, each containing:
+   Book title in uppercase accent text
+   Chapter name in bold navy text
+   1-2 sentence excerpt in smaller muted text
+   2.3.5. No interaction available on SourceCards; they serve as static citations only
+3. Book Context Switching
+   3.1. Toggle Activation
+   3.1.1. User clicks any segment in BookToggle ("Little Women", "Both Books", or "Pride & Prejudice")
+   3.1.2. System immediately updates visual active state of selected segment (amber background, white text)
+   3.1.3. System updates internal book context state for subsequent queries
+   3.1.4. Existing conversation history remains fully visible and unchanged in MessageList
+   3.1.5. Previous messages retain their original formatting and positions
+   3.2. Continued Conversation with New Context
+   3.2.1. User composes new query in ChatInput
+   3.2.2. System associates new query with currently selected book context
+   3.2.3. If specific single book selected: AI limits source retrieval to that manuscript only
+   3.2.4. If "Both Books" selected: AI retrieves and blends sources from both manuscripts
+   3.2.5. New UserMessage and AssistantMessage append below existing history in MessageList
+4. Session Termination
+   4.1. Browser Closure
+   4.1.1. User closes browser tab or navigates away from application
+   4.1.2. System discards all conversation data immediately without local storage persistence
+   4.1.3. No data retained regarding previous queries, responses, or book toggle selections
+   4.2. Return Visit
+   4.2.1. User returns to application URL in new browser session
+   4.2.2. System presents fresh MainChatInterface with empty MessageList
+   4.2.3. BookToggle resets to default "Both Books" position
+   4.2.4. Welcome state with greeting and suggested questions displays again
+   Data Model
+   BookContext
+   Enum representing the available query contexts hardcoded to the two supported manuscripts.
+
+LITTLE_WOMEN: Restricts queries to "Little Women" manuscript only
+PRIDE_PREJUDICE: Restricts queries to "Pride & Prejudice" manuscript only
+BOTH: Queries across both manuscripts simultaneously with blended narrative output
+SourceCitation
+Represents a textual reference supporting an AI response. Strictly limited to top 3 most relevant per response.
+
+id: Unique identifier
+bookTitle: String enum ["Little Women", "Pride and Prejudice"]
+chapterName: String (e.g., "Chapter 1", "Volume II, Chapter 5")
+excerpt: String (1-2 sentence passage excerpt, maximum 280 characters)
+Message
+Represents a single turn in the conversation thread.
+
+id: Unique client-generated identifier
+role: Enum [user, assistant]
+content: String (message text content)
+timestamp: DateTime (creation time)
+bookContext: BookContext (context active at time of message creation)
+sources: Array[SourceCitation] (populated only for assistant messages; max length 3)
+isStreaming: Boolean (true only for assistant message currently being generated)
+isComplete: Boolean (false during streaming, true when finished)
+ConversationState
+Transient session state container (not persisted).
+
+messages: Array[Message] (chronological order, newest last)
+currentBookContext: BookContext (default: BOTH)
+activeStreamId: String? (ID of message currently streaming, null if idle)
+isLoading: Boolean (true during initial pulsing dots phase, before streaming begins)
+Design
+Layout: Single-column, centered, max-width ~800px. No sidebar. Three vertical regions stacked top to bottom: (1) app header, (2) book toggle, (3) chat area.
+
+App header: A slim top bar with the app name "Editorial AI" on the left in deep navy, no logo, no nav links. Background same as page (#FAFAF8) with a subtle bottom border in a light grey.
+
+Book toggle (BookToggle): A 3-segment pill control sitting below the header, centered. The three segments are labelled "Little Women", "Both Books", "Pride & Prejudice". The active segment has a warm amber background (#D97706) with white text and slightly rounded corners. Inactive segments are transparent with navy text. The whole pill has a thin navy border. Clicking a segment switches the active book context for the chat below.
+
+Chat area (ChatPanel): Takes up the remaining vertical space. Contains two sub-regions:
+
+— Message list (MessageList): a scrollable feed of conversation turns. Each turn is one of:
+
+WelcomeState: A centered, elegant entry view featuring a large italicized greeting in deep navy and a series of subtle, semi-transparent suggested question boxes.
+User message (UserMessage): right-aligned bubble with a light amber tint background, navy text, rounded corners. No avatar.
+AI message (AssistantMessage): left-aligned, white background, navy text, subtle drop shadow, rounded corners. While the AI is still generating, show three animated pulsing dots inside the bubble as a loading indicator. When complete, the full text appears.
+Source cards (SourceCard, rendered below each completed AI message): a horizontal row of 1–3 small cards. Each card has a white background, a 1px navy border, rounded corners, and two lines of content: line 1 — book title in small amber uppercase text + chapter name in navy bold; line 2 — a 1–2 sentence passage excerpt in a smaller, slightly muted navy. Cards sit flush left, aligned with the AI bubble above them.
+— Chat input (ChatInput): pinned to the bottom of the chat area. A full-width rounded textarea (1–3 lines auto-expanding) with a send button on the right. Send button uses the amber accent as background. Placeholder text: "Ask something about the book…"
+
+Disabled state: When the AI is loading or streaming, or when the input is empty/whitespace, the textarea and send button are visually dimmed (opacity reduced) and do not accept user interaction.
+Colors: off-white page background #FAFAF8 · deep navy text #1A1A2E · warm amber accent #D97706 · white card/bubble backgrounds · light grey borders where needed.
+
+Typography: Inter (or similar clean sans-serif). Body 15px, chapter names 13px bold, excerpts 12px muted, header app name 18px medium.
+
+Aesthetic: calm, editorial, professional. No decorative illustrations. No gradients except subtle shadows. Feels like a tool a book editor would trust.
+
+Frontend
+Common
+AppHeader
+Slim top bar region present on all views containing application identification. Fixed position at viewport top.
+
+BookToggle
+Three-segment pill control for context selection. Centered horizontally below AppHeader. Segments labeled "Little Women", "Both Books", "Pride Prejudice". Clicking updates active selection immediately.
+
+Editorial Workspace
+The main interface for the application, housing the chat interface, book context toggle, and message history. It handles user input, AI response streaming, and the display of cited source evidence.
+
+Contents
+Primary and sole application screen. Single-column layout centered with maximum width constraint. Contains three stacked vertical regions: AppHeader, BookToggle, and ChatPanel.
+
+Content Hierarchy:
+
+AppHeader region containing application name "Editorial AI"
+BookToggle region with three-segment pill control
+ChatPanel region occupying remaining viewport height
+MessageList (scrollable feed)
+WelcomeState (conditional empty view)
+Greeting text from AI
+Three suggested question buttons:
+"Compare the economic pressures faced by the March and Bennett families."
+"How do Jo March and Elizabeth Bennet subvert gender roles?"
+"Find passages illustrating the theme of marriage in the 19th century."
+UserMessage bubbles (right-aligned, user queries)
+AssistantMessage bubbles (left-aligned, AI responses)
+Loading state with pulsing dots
+Streaming text state
+Completed text state
+SourceCards row (horizontal arrangement below each completed AssistantMessage)
+1-3 cards maximum
+Book title line
+Chapter name line
+Excerpt line
+ChatInput (fixed bottom input area)
+Auto-expanding textarea (1-3 lines, scrollbar at max)
+Send button
+Placeholder text
+Interactions:
+
+BookToggle: Clicking any segment immediately updates currentBookContext state and visual active styling. Existing messages remain visible; context change affects only subsequent queries.
+WelcomeState: Appears only when messages array is empty. Suggested questions are clickable; clicking populates ChatInput with valid text and triggers immediate submission.
+ChatInput: Accepts text input. Auto-expands vertically as user types up to 3 lines; beyond 3 lines, internal scrollbar appears.
+Send Button State: The Send button is disabled (visually dimmed and unclickable) if the ChatInput is empty or contains only whitespace. It becomes enabled only when non-whitespace text is present.
+Submission: Clicking Send triggers query creation, appends UserMessage to MessageList, clears ChatInput, and triggers AssistantMessage creation with initial pulsing dots state.
+Input Availability: ChatInput (textarea and Send button) is disabled while activeStreamId is not null or isLoading is true. Visually, the input opacity is reduced and interaction is blocked to prevent concurrent queries.
+AI Response Flow: After brief delay (pulsing dots), AssistantMessage transitions to streaming text display. Text renders character-by-character. MessageList auto-scrolls to keep generating content visible.
+Source Display: Upon streaming completion, 1-3 SourceCards render immediately below the AssistantMessage. Cards are non-interactive.
+Session Behavior: Closing browser tab destroys all state. Returning to URL presents fresh WelcomeState with BookToggle reset to "Both Books".
