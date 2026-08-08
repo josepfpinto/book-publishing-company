@@ -1,0 +1,9 @@
+# Dev/test dependencies. Deliberately NOT in requirements.txt — shipping a test
+# framework in the runtime image is dead weight.
+#
+#   local:  pip install -r backend/requirements-dev.txt
+#   docker: docker compose --profile test run --rm backend-test
+#
+-r requirements.txt
+
+pytest==9.1.*

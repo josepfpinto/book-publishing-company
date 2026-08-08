@@ -16,6 +16,18 @@ services:
       retries: 5
       start_period: 10s
 
+  # Test runner. Same image as `backend` but built with pytest installed.
+  # Not started by `docker compose up` — it sits behind the `test` profile:
+  #   docker compose --profile test run --rm backend-test
+  backend-test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    command: python -m pytest tests/ -v
+
   frontend:
     build: ./frontend
     ports:
