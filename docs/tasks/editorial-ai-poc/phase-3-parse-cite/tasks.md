@@ -74,10 +74,10 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   ## Validation
 
   ### Human review checklist
-  - [ ] Each of the 6 defects in plan §4 has a corresponding fix (check the defect table row by row against the code)
-  - [ ] Chunk dict schema matches exactly — no `None` values, optional keys absent when not applicable, `text` key present
-  - [ ] Smoke-test `__main__` block prints `47 chapters` for LW and `61 chapters` for P&P
-  - [ ] Chunking never splits mid-paragraph (read one chapter's chunk list and verify paragraph boundaries)
+  - [x] Each of the 6 defects in plan §4 has a corresponding fix (check the defect table row by row against the code)
+  - [x] Chunk dict schema matches exactly — no `None` values, optional keys absent when not applicable, `text` key present
+  - [x] Smoke-test `__main__` block prints `47 chapters` for LW and `61 chapters` for P&P
+  - [x] Chunking never splits mid-paragraph (read one chapter's chunk list and verify paragraph boundaries)
 
   ### If validation fails
   - *Missing defect fix:* return only the affected lines with the defect row from the plan — surgical fix only, do not re-run the full module.
@@ -155,10 +155,10 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   ## Validation
 
   ### Human review checklist
-  - [ ] `compose_heading()` produces all four canonical forms from the `__main__` assertions
-  - [ ] `build_excerpt()` ends on sentence punctuation (`.`, `!`, `?`, `"`) — never mid-word (test with a multi-sentence string)
-  - [ ] Neither function has book-specific branching — metadata-conditional logic only
-  - [ ] The two cosmetic artifacts (double-quote, small-caps) are NOT worked around
+  - [x] `compose_heading()` produces all four canonical forms from the `__main__` assertions
+  - [x] `build_excerpt()` ends on sentence punctuation (`.`, `!`, `?`, `"`) — never mid-word (test with a multi-sentence string)
+  - [x] Neither function has book-specific branching — metadata-conditional logic only
+  - [x] The two cosmetic artifacts (double-quote, small-caps) are NOT worked around
 
   ### If validation fails
   - *Wrong heading separator (wrong dash/dot character):* surgical fix to the separator string.

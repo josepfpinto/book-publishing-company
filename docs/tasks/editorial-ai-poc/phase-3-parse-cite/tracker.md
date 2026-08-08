@@ -3,7 +3,7 @@ name: phase-3-parse-cite
 plan: editorial-ai-poc
 phase: "phase-3"
 type: tracker
-status: in_progress
+status: done
 branch: "feat/phase-3-parse-cite"
 code_repo: "book-publishing-company"
 ---
@@ -22,3 +22,4 @@ code_repo: "book-publishing-company"
 - 2026-08-08 — T1 backend/core/ingestion.py implemented and smoke-tested; T2 backend/core/citations.py implemented and smoke-tested; Step 2 done
 - 2026-08-08 — Deterministic gate PASS; Semantic gate SHIP (round 2 of 3, 2 fixes applied); Step 3–4 done
 - 2026-08-08 — Housecleaning done (tasks.md updated, imports clean, no forbidden patterns); Step 5 done
+- 2026-08-08 — PR #3 opened; tracker marked done; Step 6 done

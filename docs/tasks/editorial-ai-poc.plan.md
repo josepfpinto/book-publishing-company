@@ -39,6 +39,7 @@ type: spike
 chat_ids:
   - 67c92d07-a8fa-4e5b-9fe4-f7683ba3eb0f
   - 416eed4d-3f1d-49ad-8f76-815f5205e653
+  - 919029eb-0049-4b4c-a665-0f1fafe273bc
   [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
 ---
 
