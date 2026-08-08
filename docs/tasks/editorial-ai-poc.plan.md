@@ -19,7 +19,7 @@ todos:
     status: in_progress
   - id: phase-3
     content: "Phase 3: Book Ingestion Pipeline"
-    status: pending
+    status: in_progress
   - id: phase-4
     content: "Phase 4: AI Assistant Backend"
     status: pending
@@ -36,7 +36,10 @@ todos:
     content: "Phase 8: RAG Depth Spike (deferred)"
     status: pending
 type: spike
-chat_ids: [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
+chat_ids:
+  - 67c92d07-a8fa-4e5b-9fe4-f7683ba3eb0f
+  - 416eed4d-3f1d-49ad-8f76-815f5205e653
+  [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
 ---
 
 # Editorial AI POC — Interview Challenge
@@ -63,7 +66,7 @@ All key unknowns resolved during shaping. Proceeding to implementation.
 1. **Ingest** — `ingest.py` parses both HTML books (chapter-aware, DOM-derived metadata), chunks at ~500 tokens with paragraph overlap, embeds with `text-embedding-3-large`, stores in a single ChromaDB `books` collection tagged by `book_id`.
 2. **Query** — React sends a message to `POST /api/chat`. Backend embeds the query, retrieves top-k chunks from the `books` collection (filtered by `book_id`, or unfiltered for cross-book), builds a prompt with retrieved context + conversation history, calls GPT-5.1.
 3. **Stream** — Backend streams GPT-5.1 tokens via SSE. React reads the response `ReadableStream` (`fetch`, **not** `EventSource` — see §5), renders progressively.
-4. **Cross-book** — `book_id: "both"` runs the *same* query path with no `where` filter, giving one globally ranked top-k across both books. There is no separate compare path and no per-book merge step.
+4. **Cross-book** — `book_id: "both"` runs the _same_ query path with no `where` filter, giving one globally ranked top-k across both books. There is no separate compare path and no per-book merge step.
 
 ```mermaid
 graph TD
@@ -95,13 +98,13 @@ graph TD
 
 ### Component table
 
-| Component    | What it is                            | Where it runs                    | Deployed how                                       |
-| ------------ | ------------------------------------- | -------------------------------- | -------------------------------------------------- |
-| React + Vite | Chat UI, book selector, source cards  | Container `:3000`                | `docker compose up`                                |
-| FastAPI      | REST + SSE API, RAG orchestration     | Container `:8000`                | `docker compose up`                                |
-| ChromaDB     | Local vector store (1 `books` collection, filtered by `book_id`) | Persistent volume `/data/chroma` | Auto-init on first run          |
-| `ingest.py`  | One-shot book parsing + embedding     | Inside backend image (run once)  | `docker compose run --rm backend python ingest.py` |
-| Azure OpenAI | GPT-5.1-chat + text-embedding-3-large | External SaaS                    | API key in `.env`                                  |
+| Component    | What it is                                                       | Where it runs                    | Deployed how                                       |
+| ------------ | ---------------------------------------------------------------- | -------------------------------- | -------------------------------------------------- |
+| React + Vite | Chat UI, book selector, source cards                             | Container `:3000`                | `docker compose up`                                |
+| FastAPI      | REST + SSE API, RAG orchestration                                | Container `:8000`                | `docker compose up`                                |
+| ChromaDB     | Local vector store (1 `books` collection, filtered by `book_id`) | Persistent volume `/data/chroma` | Auto-init on first run                             |
+| `ingest.py`  | One-shot book parsing + embedding                                | Inside backend image (run once)  | `docker compose run --rm backend python ingest.py` |
+| Azure OpenAI | GPT-5.1-chat + text-embedding-3-large                            | External SaaS                    | API key in `.env`                                  |
 
 ### Cost estimate (dev)
 
@@ -157,68 +160,68 @@ Mowgli prompt → UI screenshot(s) → extract: colors, typography, layout → C
 
 Delivered artefacts: `docs/design/desing-spec-mowgli.txt` (regenerated spec) + 7 state screenshots (`1-welcome-screen` … `7-conversation-continues`).
 
-**The prompt above is history, not spec.** Mowgli's returned spec text mostly echoes the prompt back — including its hex values — but the *render* departs from the prompt in several deliberate, better ways. Where the screenshots and any prose disagree, **the screenshots win**. The table below is what gets built.
+**The prompt above is history, not spec.** Mowgli's returned spec text mostly echoes the prompt back — including its hex values — but the _render_ departs from the prompt in several deliberate, better ways. Where the screenshots and any prose disagree, **the screenshots win**. The table below is what gets built.
 
 #### Design tokens — sampled from the PNG pixels, not from the prompt
 
-| Token                | Value     | Prompt said | Used for                                                     |
-| -------------------- | --------- | ----------- | ------------------------------------------------------------ |
-| `--bg`               | `#F9F9F7` | `#FAFAF8`   | Page + header background                                      |
-| `--ink`              | `#181928` | `#1A1A2E`   | Body text, active segment fill                                |
-| `--accent`           | `#CB7026` | `#D97706`   | Send button (enabled), `AI` label, left rule, source eyebrows |
-| `--surface`          | `#FFFFFF` | —           | User bubble, source cards, inactive pill segments             |
-| `--surface-subtle`   | `#FCFCFB` | —           | Suggested-question buttons on the welcome screen              |
-| `--hairline`         | `#E4E2DC` | "light grey" | All 1px borders, dividers, disabled send button              |
+| Token              | Value     | Prompt said  | Used for                                                      |
+| ------------------ | --------- | ------------ | ------------------------------------------------------------- |
+| `--bg`             | `#F9F9F7` | `#FAFAF8`    | Page + header background                                      |
+| `--ink`            | `#181928` | `#1A1A2E`    | Body text, active segment fill                                |
+| `--accent`         | `#CB7026` | `#D97706`    | Send button (enabled), `AI` label, left rule, source eyebrows |
+| `--surface`        | `#FFFFFF` | —            | User bubble, source cards, inactive pill segments             |
+| `--surface-subtle` | `#FCFCFB` | —            | Suggested-question buttons on the welcome screen              |
+| `--hairline`       | `#E4E2DC` | "light grey" | All 1px borders, dividers, disabled send button               |
 
 The prompt's amber `#D97706` is a saturated orange; the render's `#CB7026` is a muted terracotta. The prompt's navy `#1A1A2E` is bluer than the rendered `#181928`. **Use the sampled column** — it is what the evaluator sees in the screenshots.
 
 #### Where the render overrode the prompt (adopt the render)
 
-| # | Prompt / earlier plan said                                | Render does                                                                                | Verdict                                                                    |
-| - | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| 1 | Active toggle segment = **amber** fill                     | Active segment = **navy `#181928`** fill, white text; inactive = white on the off-white page | **Render.** Amber is reserved for accents only — a more coherent system.    |
-| 2 | AI turn = white **bubble** with drop shadow                | AI turn = **no bubble**. A 2px amber left rule, a mono `AI` label + timestamp, then plain body text running the full column width | **Render.** Long editorial prose reads far better unboxed. Biggest structural difference. |
-| 3 | User bubble = **light amber tint**                         | User bubble = **white** card, hairline border, right-aligned, ~55% column width, timestamp bottom-right | **Render.**                                                                 |
-| 4 | Header = app name only                                     | Two-line header: mono eyebrow `A READING COMPANION FOR EDITORS` above `Editorial AI`, plus `VOL. 01 / 2024` right-aligned | **Render, with one change** — see "Design defects" below.                   |
-| 5 | Typography = Inter only                                    | **Two** typefaces: sans (Inter-like) for body/UI + a **letterspaced uppercase monospace** for every micro-label (eyebrow, `VOL. 01 / 2024`, `CONVERSATION`, `AI`, `SOURCE 01 / 03`, timestamps) | **Render.** The mono micro-label is the design's signature. Add a second font. |
-| 6 | (absent)                                                   | A `CONVERSATION` mono divider above the first turn; hairline rules between turns              | **Render.**                                                                  |
-| 7 | (absent)                                                   | Open-book glyph icon inside each toggle segment                                              | **Render.** Inline SVG, `currentColor`.                                      |
-| 8 | (absent)                                                   | Per-message `14:33` timestamps                                                               | **Render.** Client-generated — the SSE payload carries no timestamp.         |
-| 9 | Welcome greeting = an AI message                           | Welcome greeting = large centered display line, mixed italic/roman: _"Ready to answer questions about"_ **Little Women** _and_ **Pride & Prejudice.** — not a chat bubble | **Render.** Simpler; no fake first turn in the message array.                |
+| #   | Prompt / earlier plan said                  | Render does                                                                                                                                                                                     | Verdict                                                                                   |
+| --- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | Active toggle segment = **amber** fill      | Active segment = **navy `#181928`** fill, white text; inactive = white on the off-white page                                                                                                    | **Render.** Amber is reserved for accents only — a more coherent system.                  |
+| 2   | AI turn = white **bubble** with drop shadow | AI turn = **no bubble**. A 2px amber left rule, a mono `AI` label + timestamp, then plain body text running the full column width                                                               | **Render.** Long editorial prose reads far better unboxed. Biggest structural difference. |
+| 3   | User bubble = **light amber tint**          | User bubble = **white** card, hairline border, right-aligned, ~55% column width, timestamp bottom-right                                                                                         | **Render.**                                                                               |
+| 4   | Header = app name only                      | Two-line header: mono eyebrow `A READING COMPANION FOR EDITORS` above `Editorial AI`, plus `VOL. 01 / 2024` right-aligned                                                                       | **Render, with one change** — see "Design defects" below.                                 |
+| 5   | Typography = Inter only                     | **Two** typefaces: sans (Inter-like) for body/UI + a **letterspaced uppercase monospace** for every micro-label (eyebrow, `VOL. 01 / 2024`, `CONVERSATION`, `AI`, `SOURCE 01 / 03`, timestamps) | **Render.** The mono micro-label is the design's signature. Add a second font.            |
+| 6   | (absent)                                    | A `CONVERSATION` mono divider above the first turn; hairline rules between turns                                                                                                                | **Render.**                                                                               |
+| 7   | (absent)                                    | Open-book glyph icon inside each toggle segment                                                                                                                                                 | **Render.** Inline SVG, `currentColor`.                                                   |
+| 8   | (absent)                                    | Per-message `14:33` timestamps                                                                                                                                                                  | **Render.** Client-generated — the SSE payload carries no timestamp.                      |
+| 9   | Welcome greeting = an AI message            | Welcome greeting = large centered display line, mixed italic/roman: _"Ready to answer questions about"_ **Little Women** _and_ **Pride & Prejudice.** — not a chat bubble                       | **Render.** Simpler; no fake first turn in the message array.                             |
 
 #### Design defects — where the render loses
 
-| # | Defect                                                                                                                                      | Resolution                                                                                                     |
-| - | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| A | **Source card row overflows the column.** Measured on `5-ai-response-sources.png`: column is 927px of a 2386px render, each card 344px, 3 cards + gaps ≈ 1064px. Card 3 is clipped ~40% at the right edge in every screenshot that shows sources. | Cards are `flex: 1 1 0` inside the column and share the width equally — 3 cards, no overflow, no scroll. Excerpt clamps with `-webkit-line-clamp: 4`. |
-| B | `VOL. 01 / 2024` hardcodes a year that is already stale.                                                                                    | Render as `VOL. 01` only. Keeps the editorial-masthead device without dating the demo.                        |
-| C | Screenshot 7 shows **Little Women** selected while the assistant answers about Charlotte Lucas, Mr. Collins and Darcy (Pride & Prejudice).   | Mock-data artefact — but it is the visible symptom of a **real plan defect**. See §4 "Conversation history and book scope". |
-| D | `SOURCE 01 / 03` counter on each card.                                                                                                      | **Dropped** (ruling unchanged, §5). Ordinal position tells an editor nothing. Card line 1 is the book title alone. |
-| E | P&P cards read `Chapter 1 — The Entail` / `Chapter 7 — Netherfield`.                                                                        | Invented titles — Austen numbered her chapters. Real card reads `Chapter 1 · p. 3` (ruling unchanged, §4).      |
+| #   | Defect                                                                                                                                                                                                                                            | Resolution                                                                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A   | **Source card row overflows the column.** Measured on `5-ai-response-sources.png`: column is 927px of a 2386px render, each card 344px, 3 cards + gaps ≈ 1064px. Card 3 is clipped ~40% at the right edge in every screenshot that shows sources. | Cards are `flex: 1 1 0` inside the column and share the width equally — 3 cards, no overflow, no scroll. Excerpt clamps with `-webkit-line-clamp: 4`. |
+| B   | `VOL. 01 / 2024` hardcodes a year that is already stale.                                                                                                                                                                                          | Render as `VOL. 01` only. Keeps the editorial-masthead device without dating the demo.                                                                |
+| C   | Screenshot 7 shows **Little Women** selected while the assistant answers about Charlotte Lucas, Mr. Collins and Darcy (Pride & Prejudice).                                                                                                        | Mock-data artefact — but it is the visible symptom of a **real plan defect**. See §4 "Conversation history and book scope".                           |
+| D   | `SOURCE 01 / 03` counter on each card.                                                                                                                                                                                                            | **Dropped** (ruling unchanged, §5). Ordinal position tells an editor nothing. Card line 1 is the book title alone.                                    |
+| E   | P&P cards read `Chapter 1 — The Entail` / `Chapter 7 — Netherfield`.                                                                                                                                                                              | Invented titles — Austen numbered her chapters. Real card reads `Chapter 1 · p. 3` (ruling unchanged, §4).                                            |
 
 #### Canonical copy strings
 
 The spec text, the prompt and the screenshots disagree on three strings. Pinned here; anything else is a bug:
 
-| Concept              | Canonical                                | Wrong variants seen                                          |
-| -------------------- | ---------------------------------------- | ------------------------------------------------------------ |
-| Austen title (UI)    | `Pride & Prejudice`                      | `Pride Prejudice` (spec §Frontend), `Pride and Prejudice` (spec Data Model) |
-| Austen title (data)  | `Pride and Prejudice` — `book_title` metadata, matching the source text | —                                                    |
-| Austen family name   | `Bennet`                                 | `Bennett` (spec line 19 — the suggested-question copy)        |
-| Input placeholder    | `Ask something about the book…`          | —                                                             |
+| Concept             | Canonical                                                               | Wrong variants seen                                                         |
+| ------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Austen title (UI)   | `Pride & Prejudice`                                                     | `Pride Prejudice` (spec §Frontend), `Pride and Prejudice` (spec Data Model) |
+| Austen title (data) | `Pride and Prejudice` — `book_title` metadata, matching the source text | —                                                                           |
+| Austen family name  | `Bennet`                                                                | `Bennett` (spec line 19 — the suggested-question copy)                      |
+| Input placeholder   | `Ask something about the book…`                                         | —                                                                           |
 
 #### Decisions (locked in for implementation)
 
-| Decision          | Value                                                              | Rationale                                                              |
-| ----------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| Color palette     | Sampled tokens above                                               | Matches the screenshots the evaluator is shown                          |
-| Typography        | Inter (body/UI) + one monospace (micro-labels), both Google Fonts  | Two-typeface pairing is the design's signature                          |
-| Component library | None (plain CSS + CSS variables)                                   | Faithfully match Mowgli output; no framework imposing its look          |
-| Layout            | Single-column, centered — header + toggle + chat                   | 2 books don't warrant a sidebar; simpler to build and demo              |
-| Book selector     | 3-way segmented toggle, navy active fill                           | Exposes cross-book comparison with one click; looks intentional         |
-| Source display    | Citation cards per answer, 3 equal-width, no overflow              | Grounds AI responses in actual retrieved passages — key for editors     |
-| Responsive        | Desktop-first (evaluators will run locally)                        | Scope — mobile out of scope for POC                                     |
-| Session           | Fully transient — no localStorage, no persistence                  | Per spec §4; also removes a whole class of demo-state bugs              |
+| Decision          | Value                                                             | Rationale                                                           |
+| ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Color palette     | Sampled tokens above                                              | Matches the screenshots the evaluator is shown                      |
+| Typography        | Inter (body/UI) + one monospace (micro-labels), both Google Fonts | Two-typeface pairing is the design's signature                      |
+| Component library | None (plain CSS + CSS variables)                                  | Faithfully match Mowgli output; no framework imposing its look      |
+| Layout            | Single-column, centered — header + toggle + chat                  | 2 books don't warrant a sidebar; simpler to build and demo          |
+| Book selector     | 3-way segmented toggle, navy active fill                          | Exposes cross-book comparison with one click; looks intentional     |
+| Source display    | Citation cards per answer, 3 equal-width, no overflow             | Grounds AI responses in actual retrieved passages — key for editors |
+| Responsive        | Desktop-first (evaluators will run locally)                       | Scope — mobile out of scope for POC                                 |
+| Session           | Fully transient — no localStorage, no persistence                 | Per spec §4; also removes a whole class of demo-state bugs          |
 
 ---
 
@@ -248,14 +251,14 @@ datasets==3.*           # required by ragas for golden set handling
 
 **Parsing strategy** — both books are Project Gutenberg HTML, but they are _different transcriptions_ with different conventions. Strategy below was prototyped against both files and passes all assertions (see "Ingestion verification gate").
 
-| Property             | Little Women                            | Pride & Prejudice                       |
-| -------------------- | --------------------------------------- | --------------------------------------- |
-| Chapters             | 47                                      | 61                                      |
-| Prose                | ~250k tokens                            | ~169k tokens                            |
-| Chapter anchor       | `<a id="III">` in `p.h2` _after_ `<h2>` | `<a id="CHAPTER_III">` _inside_ `<h2>`  |
-| Chapter title        | ✅ `p.h2a` → "Playing Pilgrims"          | ❌ none — "CHAPTER III." only            |
-| Print page numbers   | ❌ none                                  | ✅ 496 × `span.pagenum` → `{181}`        |
-| Quoted letters/notes | 192 paras in `<blockquote>`             | 35 paras in `.blockquot`                |
+| Property             | Little Women                            | Pride & Prejudice                        |
+| -------------------- | --------------------------------------- | ---------------------------------------- |
+| Chapters             | 47                                      | 61                                       |
+| Prose                | ~250k tokens                            | ~169k tokens                             |
+| Chapter anchor       | `<a id="III">` in `p.h2` _after_ `<h2>` | `<a id="CHAPTER_III">` _inside_ `<h2>`   |
+| Chapter title        | ✅ `p.h2a` → "Playing Pilgrims"         | ❌ none — "CHAPTER III." only            |
+| Print page numbers   | ❌ none                                 | ✅ 496 × `span.pagenum` → `{181}`        |
+| Quoted letters/notes | 192 paras in `<blockquote>`             | 35 paras in `.blockquot`                 |
 | Drop caps            | plain text                              | `span.letra` wrapping an `<img alt="M">` |
 
 ```python
@@ -272,14 +275,14 @@ datasets==3.*           # required by ragas for golden set handling
 
 **Six defects naive `get_text()` hits** (all observed in these files, not hypothetical):
 
-| #   | Defect                                                                                | Fix                                            |
-| --- | ------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 1   | `con<span class="pagenum">{183}</span>scious` → `"con{183}scious"` (496 spans, 10 mid-word) | Capture label, `decompose()` with no whitespace |
-| 2   | 60 of 61 P&P chapters lose their first letter — drop cap is `<img alt="M">`            | `span.letra` → replace with `img[alt]`         |
-| 3   | `span.caption` inside `<h2>` ("He rode a black horse") becomes a fake citable passage  | Drop `span.caption` / `div.caption`            |
-| 4   | LW ch. 47 absorbs `<h2>The Works of Louisa May Alcott</h2>` (publisher ads) + Transcriber's Notes | Break chapter on **any** `<h2>`      |
-| 5   | P&P heading text is malformed: `CHAPTER XIII` (no period), `CHAPTERXXVII.` (no space) — regex drops 4 chapters | Use `<a id>` anchors; 61/61 parse |
-| 6   | 16 P&P paragraphs physically split across illustrations, tail marked `p.nind`          | Rejoin `p.nind` lacking a `.letra` drop cap    |
+| #   | Defect                                                                                                         | Fix                                             |
+| --- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 1   | `con<span class="pagenum">{183}</span>scious` → `"con{183}scious"` (496 spans, 10 mid-word)                    | Capture label, `decompose()` with no whitespace |
+| 2   | 60 of 61 P&P chapters lose their first letter — drop cap is `<img alt="M">`                                    | `span.letra` → replace with `img[alt]`          |
+| 3   | `span.caption` inside `<h2>` ("He rode a black horse") becomes a fake citable passage                          | Drop `span.caption` / `div.caption`             |
+| 4   | LW ch. 47 absorbs `<h2>The Works of Louisa May Alcott</h2>` (publisher ads) + Transcriber's Notes              | Break chapter on **any** `<h2>`                 |
+| 5   | P&P heading text is malformed: `CHAPTER XIII` (no period), `CHAPTERXXVII.` (no space) — regex drops 4 chapters | Use `<a id>` anchors; 61/61 parse               |
+| 6   | 16 P&P paragraphs physically split across illustrations, tail marked `p.nind`                                  | Rejoin `p.nind` lacking a `.letra` drop cap     |
 
 **Why chapter-aware chunking matters**: raw paragraph chunking loses chapter context. Chapter metadata is what lets a source citation read "Chapter 9 — Meg Goes to Vanity Fair" rather than an anonymous chunk ID.
 
@@ -294,13 +297,13 @@ datasets==3.*           # required by ragas for golden set handling
 
 Behaviour verified side-by-side on **`0.6.3` and `1.5.9`** — identical on every point the POC depends on:
 
-| Behaviour                                        | 0.6.3                | 1.5.9                       |
-| ------------------------------------------------ | -------------------- | --------------------------- |
-| `None` metadata value                            | rejected (`ValueError`) | rejected (`TypeError`)   |
-| Non-uniform metadata keys across documents        | accepted             | accepted                    |
-| `where={"book_id": "pp"}`                        | works                | works                       |
-| Integer filter `where={"chapter_number": 26}`     | works                | works                       |
-| Collection name shorter than 3 chars              | rejected             | rejected                    |
+| Behaviour                                     | 0.6.3                   | 1.5.9                  |
+| --------------------------------------------- | ----------------------- | ---------------------- |
+| `None` metadata value                         | rejected (`ValueError`) | rejected (`TypeError`) |
+| Non-uniform metadata keys across documents    | accepted                | accepted               |
+| `where={"book_id": "pp"}`                     | works                   | works                  |
+| Integer filter `where={"chapter_number": 26}` | works                   | works                  |
+| Collection name shorter than 3 chars          | rejected                | rejected               |
 
 **Gotcha that applies to both versions**: a `where` with two keys is rejected — `Expected where to have exactly one operator`. Multi-condition filters need explicit `$and`:
 
@@ -313,17 +316,17 @@ col.get(where={"$and": [{"book_id": {"$eq": "pp"}}, {"chapter_number": {"$eq": 2
 
 **Pin `chromadb==1.5.*`, not `0.6.*`.** Not for API reasons — the two are functionally equivalent here — but because 0.6.3 has a telemetry bug that prints `Failed to send telemetry event ...: capture() takes 1 positional argument but 3 were given` to stderr on **every** client/collection/add/get call, and `ANONYMIZED_TELEMETRY=False` does not suppress it. During ingestion and on every chat request that produces continuous error-looking noise in the backend logs — a bad look in an evaluation demo. 1.5.9 is silent.
 
-| Key               | Type   | Always? | Purpose                                                       |
-| ----------------- | ------ | ------- | ------------------------------------------------------------- |
-| `book_id`         | str    | ✅      | `little_women` \| `pride_prejudice` — filter key              |
-| `book_title`      | str    | ✅      | "Little Women" — rendered on every SourceCard                 |
-| `chapter_number`  | int    | ✅      | Makes "what happens in chapter 12" a metadata filter          |
-| `chapter_title`   | str    | LW only | "Playing Pilgrims" — omitted for P&P                          |
-| `chunk_index`     | int    | ✅      | Order within chapter                                          |
-| `page_start`      | str    | P&P only | Print page from `span.pagenum` (1894 Allen ed.)              |
-| `page_end`        | str    | P&P only | Last page the chunk spans                                     |
-| `contains_letter` | bool   | ✅      | Chunk sits in `<blockquote>` / `.blockquot` — a letter or note |
-| `excerpt`         | str    | ✅      | Pre-computed ≥ 1 complete sentence for the SourceCard         |
+| Key               | Type | Always?  | Purpose                                                        |
+| ----------------- | ---- | -------- | -------------------------------------------------------------- |
+| `book_id`         | str  | ✅       | `little_women` \| `pride_prejudice` — filter key               |
+| `book_title`      | str  | ✅       | "Little Women" — rendered on every SourceCard                  |
+| `chapter_number`  | int  | ✅       | Makes "what happens in chapter 12" a metadata filter           |
+| `chapter_title`   | str  | ✅       | "Playing Pilgrims" (LW real title); `"Chapter {n}"` for books without chapter titles (P&P) |
+| `chunk_index`     | int  | ✅       | Order within chapter                                           |
+| `page_start`      | str  | P&P only | Print page from `span.pagenum` (1894 Allen ed.)                |
+| `page_end`        | str  | P&P only | Last page the chunk spans                                      |
+| `contains_letter` | bool | ✅       | Chunk sits in `<blockquote>` / `.blockquot` — a letter or note |
+| `excerpt`         | str  | ✅       | Pre-computed ≥ 1 complete sentence for the SourceCard          |
 
 **`contains_letter` is the highest-value HTML-only signal.** In P&P the letters are plot-critical (Darcy's, Lydia's, Collins's); in LW they carry much of the sisters' correspondence. Plain-text extraction destroys the distinction — the `<blockquote>` preserves it for free, and it turns "find the letter where Darcy explains Wickham" into a filtered query.
 
@@ -331,24 +334,24 @@ col.get(where={"$and": [{"book_id": {"$eq": "pp"}}, {"chapter_number": {"$eq": 2
 
 Every SourceCard shows **book title**, a **chapter line**, and **at least one complete sentence**.
 
-**The chapter line always starts with `Chapter {n}`.** Everything after that is optional and appended only when the metadata exists. There is no special-casing and no empty state — a book without chapter titles simply reads `Chapter 1`.
+**The chapter line always starts with `Chapter {n}`.** `chapter_title` is always present in metadata — for books with real titles it is the title string; for books without (P&P) it is `"Chapter {n}"` (the fallback form). `compose_heading()` detects the fallback by comparing `chapter_title == f"Chapter {n}"` and omits the redundant dash-title in that case.
 
 ```
-book_title                                    → ALWAYS
-"Chapter {n}"                                 → ALWAYS
-" — {chapter_title}"                          → only if chapter_title in metadata
-" · p. {page_start}" | " · pp. {start}–{end}" → only if page_start in metadata
+book_title                                                → ALWAYS
+"Chapter {n}"                                             → ALWAYS
+" — {chapter_title}"                                      → only if chapter_title != "Chapter {n}"
+" · p. {page_start}" | " · pp. {start}–{end}"            → only if page_start in metadata
 ```
 
 Concretely, for the two books in this POC:
 
-| Book              | Card heading                          | Why                              |
-| ----------------- | ------------------------------------- | -------------------------------- |
-| Little Women      | `Chapter 9 — Meg Goes to Vanity Fair` | has titles, no page numbers      |
-| Pride & Prejudice | `Chapter 26 · pp. 182–183`            | has page numbers, no titles      |
-| _(neither)_       | `Chapter 26`                          | the base case — always valid     |
+| Book              | Card heading                          | Why                          |
+| ----------------- | ------------------------------------- | ---------------------------- |
+| Little Women      | `Chapter 9 — Meg Goes to Vanity Fair` | has real titles, no page numbers |
+| Pride & Prejudice | `Chapter 26 · pp. 182–183`            | chapter_title is "Chapter 26" (fallback) — dash suppressed; page appended |
+| _(base case)_     | `Chapter 26`                          | fallback title, no page data |
 
-`Chapter {n}` on its own is a complete, correct citation. If a future book has neither a title nor page numbers, the card still renders properly with no code change.
+`Chapter {n}` on its own is a complete, correct citation. `chapter_title` is always stored so downstream code never needs a presence-check — it just reads the field.
 
 **Excerpt rule**: at least one _complete_ sentence, never cut mid-word. Split on sentence boundaries, accumulate until ~230 chars, stop at the first boundary past ~80 chars, append `…` only when genuinely truncated. Stored as the `excerpt` metadata field at ingestion so the frontend never re-derives it.
 
@@ -361,11 +364,11 @@ Two cosmetic artifacts observed in the prototype render — both minor, neither 
 
 ### API endpoints
 
-| Endpoint          | Method | Description                                                                       |
-| ----------------- | ------ | --------------------------------------------------------------------------------- |
-| `POST /api/chat`  | POST   | SSE streaming — handles all three contexts via `book_id`, including `"both"`      |
+| Endpoint          | Method | Description                                                                                                                                                                                                           |
+| ----------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/chat`  | POST   | SSE streaming — handles all three contexts via `book_id`, including `"both"`                                                                                                                                          |
 | `GET /api/books`  | GET    | Post-ingest sanity check (id, title, chapter count). **Not consumed by the UI** — the toggle labels are hardcoded per spec. Kept because it makes the OpenAPI page a useful demo surface and proves ingestion landed. |
-| `GET /api/health` | GET    | Health check (for Docker)                                                          |
+| `GET /api/health` | GET    | Health check (for Docker)                                                                                                                                                                                             |
 
 > **`POST /api/compare` is cut.** The design collapses comparison into `book_id: "both"` on the same path, and §4 retrieval already handles it by dropping the `where` filter. A second endpoint would be a parallel code path with no caller — it existed in the first draft only because the original sketch had two collections. Removed from §7 and Phase 4.
 
@@ -379,7 +382,7 @@ POST /api/chat
   "history": [{"role": "user"/"assistant", "content": "..."}]
 }
 → SSE stream: data: {"token": "Jo and..."}\n\n
-→ SSE stream: data: {"sources": [{book_title, chapter_number, chapter_title?,
+→ SSE stream: data: {"sources": [{book_title, chapter_number, chapter_title,
                                    page_start?, page_end?, contains_letter, excerpt}]}\n\n
 → SSE stream: data: {"done": true}\n\n
 ```
@@ -390,7 +393,7 @@ POST /api/chat
 
 - Embed query with `text-embedding-3-large`
 - Query the `books` collection for top-5 chunks — `where={"book_id": ...}` for a single book, no filter for `"both"`
-- **Prompt on all 5, cite the top 3.** The design renders a maximum of 3 source cards (spec 2.3.4), so the `sources` SSE event carries the 3 best-scoring hits while the model sees 5. Retrieving only 3 is worse for `"both"`, where a single strong book can crowd out the other; showing 5 breaks the card row. The gap is deliberate and worth naming in the deck: the cards are the *primary* evidence, not an exhaustive audit trail.
+- **Prompt on all 5, cite the top 3.** The design renders a maximum of 3 source cards (spec 2.3.4), so the `sources` SSE event carries the 3 best-scoring hits while the model sees 5. Retrieving only 3 is worse for `"both"`, where a single strong book can crowd out the other; showing 5 breaks the card row. The gap is deliberate and worth naming in the deck: the cards are the _primary_ evidence, not an exhaustive audit trail.
 - Return each cited hit's metadata verbatim as the `sources` payload; the frontend composes the citation line from it (never re-derives excerpts)
 
 ### Conversation history and book scope
@@ -491,14 +494,14 @@ annotations = choice.message.annotations  # may carry citations or tool results 
 
 ### Stack decisions
 
-| Decision   | Value                              | Rationale                                              |
-| ---------- | ---------------------------------- | ------------------------------------------------------ |
-| Framework  | React 18                                    | Required by challenge; best ecosystem for streaming UI |
-| Build tool | Vite                                        | Fast dev server, minimal config                        |
-| Styling    | Plain CSS + CSS custom properties           | Match Mowgli output exactly, no override fights        |
-| State      | React `useState`/`useReducer`               | No external state library needed for a single-panel POC |
-| Streaming  | `fetch` + `response.body.getReader()`       | **Not `EventSource`** — see below                      |
-| HTTP       | `fetch`                                     | No Axios/SWR needed for 2 endpoints                    |
+| Decision   | Value                                 | Rationale                                               |
+| ---------- | ------------------------------------- | ------------------------------------------------------- |
+| Framework  | React 18                              | Required by challenge; best ecosystem for streaming UI  |
+| Build tool | Vite                                  | Fast dev server, minimal config                         |
+| Styling    | Plain CSS + CSS custom properties     | Match Mowgli output exactly, no override fights         |
+| State      | React `useState`/`useReducer`         | No external state library needed for a single-panel POC |
+| Streaming  | `fetch` + `response.body.getReader()` | **Not `EventSource`** — see below                       |
+| HTTP       | `fetch`                               | No Axios/SWR needed for 2 endpoints                     |
 
 > **`EventSource` cannot be used here.** It issues a **GET** with no request body and no custom headers. `/api/chat` is a POST carrying `book_id`, `message` and `history` as JSON. The two are incompatible — an earlier draft of this plan showed `new EventSource("/api/chat")`, which would have failed on the first Phase 5 integration.
 >
@@ -525,11 +528,11 @@ App                          ← owns messages[], currentBookContext, isLoading,
 
 **Disabled logic — two distinct conditions, per spec:**
 
-| Condition                            | Textarea | Send button |
-| ------------------------------------ | -------- | ----------- |
-| Input empty or whitespace-only       | enabled  | disabled (`--hairline` fill) |
-| `isLoading` or `activeStreamId != null` | disabled, dimmed | disabled |
-| Idle with non-whitespace text        | enabled  | enabled (`--accent` fill) |
+| Condition                               | Textarea         | Send button                  |
+| --------------------------------------- | ---------------- | ---------------------------- |
+| Input empty or whitespace-only          | enabled          | disabled (`--hairline` fill) |
+| `isLoading` or `activeStreamId != null` | disabled, dimmed | disabled                     |
+| Idle with non-whitespace text           | enabled          | enabled (`--accent` fill)    |
 
 **SourceCard** — a small bordered card rendered below each completed AI response. Three lines:
 
@@ -714,17 +717,17 @@ book-publishing-company/
 
 ## 9. Risks and Watch-outs
 
-| Risk                                                      | Likelihood                                           | Mitigation                                                                                            |
-| --------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Azure OpenAI API key expired/rate-limited                 | **Resolved** — key confirmed working via live curl   | Key tested against `/openai/deployments/gpt-5.1-chat/chat/completions`; retry logic still recommended |
-| Azure content filter blocks book passages                 | Medium — classic lit contains violence/mature themes | Catch HTTP 400 `content_filter` error code; surface as user-facing warning, not a 500                 |
-| HTML book structure inconsistent (breaks chapter chunker) | **Resolved** — both DOMs surveyed; 6 concrete defects found | Anchor-based chapter detection (not heading text) + the defect table in §4; ingestion gate asserts 47/61 sequential chapters, no page-number leakage, no back-matter leakage, no drop-cap loss |
-| Publisher back-matter cited as book text                  | **Resolved** — LW ch. 47 leaked "The Works of Louisa May Alcott" ad copy in the first prototype | Chapters break on any `<h2>`; assertion 3 in the ingestion gate blocks it |
-| Mowgli free tier limits (sessions, exports)               | **Resolved** — 7 screenshots + spec captured         | Colors sampled from the PNGs into §3; no further Mowgli access needed                                 |
-| Answer drifts outside the selected book via conversation history | **Medium** — visible in `7-conversation-continues.png` | Context-tagged history + active-scope system prompt (§4); Phase 6 scope-switch smoke test           |
-| Prompt-derived hex values baked into `globals.css`        | **Resolved** — all four prompt colors were wrong     | §3 token table is pixel-sampled and is the only source for `globals.css`                              |
-| SSE not working behind certain proxies                    | Low — local Docker only                              | Not a concern for local dev                                                                           |
-| ChromaDB embedding dimension mismatch on re-ingest        | Low                                                  | Delete volume before re-ingesting if changing embedding model                                         |
+| Risk                                                             | Likelihood                                                                                      | Mitigation                                                                                                                                                                                     |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Azure OpenAI API key expired/rate-limited                        | **Resolved** — key confirmed working via live curl                                              | Key tested against `/openai/deployments/gpt-5.1-chat/chat/completions`; retry logic still recommended                                                                                          |
+| Azure content filter blocks book passages                        | Medium — classic lit contains violence/mature themes                                            | Catch HTTP 400 `content_filter` error code; surface as user-facing warning, not a 500                                                                                                          |
+| HTML book structure inconsistent (breaks chapter chunker)        | **Resolved** — both DOMs surveyed; 6 concrete defects found                                     | Anchor-based chapter detection (not heading text) + the defect table in §4; ingestion gate asserts 47/61 sequential chapters, no page-number leakage, no back-matter leakage, no drop-cap loss |
+| Publisher back-matter cited as book text                         | **Resolved** — LW ch. 47 leaked "The Works of Louisa May Alcott" ad copy in the first prototype | Chapters break on any `<h2>`; assertion 3 in the ingestion gate blocks it                                                                                                                      |
+| Mowgli free tier limits (sessions, exports)                      | **Resolved** — 7 screenshots + spec captured                                                    | Colors sampled from the PNGs into §3; no further Mowgli access needed                                                                                                                          |
+| Answer drifts outside the selected book via conversation history | **Medium** — visible in `7-conversation-continues.png`                                          | Context-tagged history + active-scope system prompt (§4); Phase 6 scope-switch smoke test                                                                                                      |
+| Prompt-derived hex values baked into `globals.css`               | **Resolved** — all four prompt colors were wrong                                                | §3 token table is pixel-sampled and is the only source for `globals.css`                                                                                                                       |
+| SSE not working behind certain proxies                           | Low — local Docker only                                                                         | Not a concern for local dev                                                                                                                                                                    |
+| ChromaDB embedding dimension mismatch on re-ingest               | Low                                                                                             | Delete volume before re-ingesting if changing embedding model                                                                                                                                  |
 
 ---
 
@@ -750,15 +753,15 @@ book-publishing-company/
 - `DONE` Extract and record exact hex colors — Mowgli's spec text only echoes the prompt's hex values back, so the six tokens in §3 were **sampled from the PNG pixels** instead. All four prompt colors were wrong. Typography read off the render (sans + monospace pairing); spacing derived proportionally, not in absolute px.
 - `DONE` Write a 1-paragraph "design spec note" describing the Mowgli output (used as context for the frontend agent)
 
-### Phase 2 — Project Scaffolding
+### Phase 2 — Project Scaffolding DONE
 
-- `[AGENT]` Create `backend/` directory structure (see §7)
-- `[AGENT]` Create `frontend/` directory structure with Vite + React scaffold
-- `[AGENT]` Write `docker-compose.yml` with backend + frontend services + chroma_data volume
-- `[AGENT]` Write `backend/Dockerfile` (Python 3.12 slim, installs requirements)
-- `[AGENT]` Write `frontend/Dockerfile` (Node 18 alpine, Vite build)
-- `[AGENT]` Write `backend/requirements.txt` with pinned versions
-- `[AGENT]` Write `frontend/package.json` with Vite + React dependencies
+- `DONE` Create `backend/` directory structure (see §7)
+- `DONE` Create `frontend/` directory structure with Vite + React scaffold
+- `DONE` Write `docker-compose.yml` with backend + frontend services + chroma_data volume
+- `DONE` Write `backend/Dockerfile` (Python 3.12 slim, installs requirements)
+- `DONE` Write `frontend/Dockerfile` (Node 18 alpine, Vite build)
+- `DONE` Write `backend/requirements.txt` with pinned versions
+- `DONE` Write `frontend/package.json` with Vite + React dependencies
 
 ### Phase 3 — Book Ingestion Pipeline
 
@@ -770,14 +773,14 @@ book-publishing-company/
 
 **Ingestion verification gate** — each assertion maps to a defect actually observed in these files. A bare chunk count would catch none of them:
 
-| # | Assertion                                                                          | Catches                       |
-| - | ---------------------------------------------------------------------------------- | ----------------------------- |
-| 1 | Chapter count `== 47` (LW) / `== 61` (P&P) **and** numbers are sequential `1..N`    | Defect 5 — malformed headings |
-| 2 | No chunk text matches `\{[\divxlc]+\}`                                              | Defect 1 — page-number leakage |
-| 3 | No chunk contains `"The Works of Louisa May Alcott"`, `"Transcriber's Note"`, `"Project Gutenberg"` | Defect 4 — back-matter leakage |
-| 4 | Every chapter's first chunk starts with an uppercase letter or quote mark           | Defect 2 — drop-cap loss      |
-| 5 | Every chunk has `book_title`, `chapter_number`, `excerpt`; every `excerpt` ends on sentence punctuation or `…` | Citation contract |
-| 6 | No metadata value is `None`                                                         | Chroma rejects null metadata  |
+| #   | Assertion                                                                                                      | Catches                        |
+| --- | -------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| 1   | Chapter count `== 47` (LW) / `== 61` (P&P) **and** numbers are sequential `1..N`                               | Defect 5 — malformed headings  |
+| 2   | No chunk text matches `\{[\divxlc]+\}`                                                                         | Defect 1 — page-number leakage |
+| 3   | No chunk contains `"The Works of Louisa May Alcott"`, `"Transcriber's Note"`, `"Project Gutenberg"`            | Defect 4 — back-matter leakage |
+| 4   | Every chapter's first chunk starts with an uppercase letter or quote mark                                      | Defect 2 — drop-cap loss       |
+| 5   | Every chunk has `book_title`, `chapter_number`, `excerpt`; every `excerpt` ends on sentence punctuation or `…` | Citation contract              |
+| 6   | No metadata value is `None`                                                                                    | Chroma rejects null metadata   |
 
 - `[MANUAL]` Run ingestion and verify: `docker compose run --rm backend python ingest.py`
 - `[MANUAL]` Confirm the gate passes and spot-check one LW and one P&P citation render correctly
