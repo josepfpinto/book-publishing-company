@@ -3,7 +3,7 @@ name: phase-3-embed-ingest-verify
 plan: editorial-ai-poc
 phase: "phase-3"
 type: tracker
-status: in_progress
+status: done
 branch: "feat/phase-3-embed-ingest-verify"
 code_repo: "book-publishing-company"
 ---
@@ -26,3 +26,4 @@ code_repo: "book-publishing-company"
 - 2026-08-08 — Deterministic gate PASS (internal-code-validate + story-schema); Step 3 done
 - 2026-08-08 — Semantic gate SHIP (round 2 of 3; 3 fixes: upsert, index-sort, load_dotenv ordering; 2 caveats deferred: sort unit test + stale-chunks); Step 4 done
 - 2026-08-08 — Housecleaning: tasks.md T1-T3 marked [x]; no dead code or forbidden patterns found; Step 5 done
+- 2026-08-08 — PR #4 opened: https://github.com/josepfpinto/book-publishing-company/pull/4; tracker marked done; Step 6 done
