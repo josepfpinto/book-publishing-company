@@ -233,7 +233,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ---
 
-- [ ] **T4** `[MANUAL]` Run ingestion inside Docker
+- [x] **T4** `[MANUAL]` Run ingestion inside Docker
   - **Output:** Both books vectorised and stored in the ChromaDB `books` collection; `ingest.py` exits 0
   - **Complexity:** Lightweight
   - **Depends on:** T1, T2, T3
@@ -251,12 +251,12 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   5. If it fails with a rate-limit (HTTP 429), wait 60s and re-run.
 
   ## Done when
-  - [ ] `ingest.py` exits with code 0
-  - [ ] Stdout reports both books ingested with chunk counts
+  - [x] `ingest.py` exits with code 0
+  - [x] Stdout reports both books ingested with chunk counts
 
 ---
 
-- [ ] **T5** `[MANUAL]` Run gate tests + spot-check citations
+- [x] **T5** `[MANUAL]` Run gate tests + spot-check citations
   - **Output:** All six pytest assertions green; one LW and one P&P citation confirmed correctly formatted
   - **Complexity:** Lightweight
   - **Depends on:** T4
@@ -274,7 +274,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
   5. Delete `book-publishing-company/docs/tasks/editorial-ai-poc.parser-probe.py` (plan says: "Delete it once `core/ingestion.py` and `core/citations.py` exist").
 
   ## Done when
-  - [ ] All 6 pytest tests pass
-  - [ ] LW citation heading is `Chapter N — Title` format
-  - [ ] P&P citation heading is `Chapter N · p. X` or `Chapter N · pp. X–Y` format
+  - [x] All 6 pytest tests pass
+  - [x] LW citation heading is `Chapter N — Title` format
+  - [x] P&P citation heading is `Chapter N · p. X` or `Chapter N · pp. X–Y` format
   - [x] `docs/tasks/editorial-ai-poc.parser-probe.py` deleted — completed after the story closed; the box was left unticked while the tracker was marked `done`
