@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: phase-2
     content: "Phase 2: Project Scaffolding"
-    status: pending
+    status: in_progress
   - id: phase-3
     content: "Phase 3: Book Ingestion Pipeline"
     status: pending
@@ -36,7 +36,7 @@ todos:
     content: "Phase 8: RAG Depth Spike (deferred)"
     status: pending
 type: spike
-chat_ids: [9a13b659-a615-45d3-81b8-2a9a21b1541c]
+chat_ids: [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
 ---
 
 # Editorial AI POC — Interview Challenge
