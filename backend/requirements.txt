@@ -1,0 +1,11 @@
+fastapi==0.115.*
+uvicorn[standard]==0.32.*
+openai==1.57.*
+chromadb==1.5.*
+beautifulsoup4==4.13.*
+lxml==5.3.*
+python-dotenv==1.0.*
+
+# Phase 8 (RAG Depth Spike) — not needed for core POC
+# ragas==0.2.*
+# datasets==3.*
