@@ -11,7 +11,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ## Tasks
 
-- [ ] **T1** `[AGENT]` Write `backend/core/embeddings.py`
+- [x] **T1** `[AGENT]` Write `backend/core/embeddings.py`
   - **Output:** `backend/core/embeddings.py` — exports `embed_texts(texts, batch_size=100) -> list[list[float]]`; batches API calls; reads credentials from env
   - **Complexity:** Standard
   - **Depends on:** —
@@ -70,7 +70,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ---
 
-- [ ] **T2** `[AGENT]` Write `backend/ingest.py`
+- [x] **T2** `[AGENT]` Write `backend/ingest.py`
   - **Output:** `backend/ingest.py` — CLI that ingests both books into ChromaDB `books` collection; prints progress; exits 0 on success
   - **Complexity:** Standard
   - **Depends on:** T1 (embeddings.py); Story 1 T1 (ingestion.py); Story 1 T2 (citations.py)
@@ -150,7 +150,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ---
 
-- [ ] **T3** `[AGENT]` Write `backend/tests/test_ingestion.py`
+- [x] **T3** `[AGENT]` Write `backend/tests/test_ingestion.py`
   - **Output:** `backend/tests/test_ingestion.py` and `backend/tests/__init__.py` — six pytest tests implementing the ingestion verification gate; all run offline without Azure OpenAI
   - **Complexity:** Standard
   - **Depends on:** Story 1 T1 (ingestion.py); Story 1 T2 (citations.py)
