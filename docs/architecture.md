@@ -1,0 +1,135 @@
+# Architecture & Code Orientation
+
+> Code is the source of truth. This doc orients agents to where things live and how the pieces connect — not what the code says.
+
+---
+
+## System overview
+
+Two Docker services plus a one-shot ingestion tool, backed by Azure OpenAI and a local ChromaDB vector store.
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Docker Compose                                      │
+│                                                      │
+│  frontend  :3000          backend  :8000             │
+│  React + Vite  ──HTTP/SSE──▶  FastAPI                │
+│                                    │                 │
+│                             ChromaDB (named volume)  │
+│                             /app/data/chroma         │
+└─────────────────────────────────────────────────────┘
+                                     │
+                              Azure OpenAI
+                      text-embedding-3-large  /  gpt-5.1-chat
+```
+
+`ingest.py` is a **one-shot CLI** — it runs once before starting the app, populates ChromaDB, and exits. It is not part of the running backend.
+
+---
+
+## Data flows
+
+**Ingestion (run once):**
+```
+books shared/*.html
+  → core/ingestion.py   parse + chunk (chapter-aware, ~500 token chunks)
+  → core/citations.py   populate excerpt + compose headings
+  → core/embeddings.py  batch embed via Azure OpenAI (batches of 100)
+  → ChromaDB            single "books" collection, tagged by book_id
+```
+
+**Chat (every request):**
+```
+React  POST /api/chat {book_id, message, history}
+  → embed query (core/embeddings.py)
+  → ChromaDB query top-5 (where book_id filter, or no filter for "both")
+  → GPT-5.1-chat with retrieved passages + scoped system prompt
+  → SSE stream: tokens → sources event → done event
+  → React renders progressively; source cards appear on done
+```
+
+---
+
+## Directory map
+
+```
+book-publishing-company/
+├── backend/
+│   ├── core/
+│   │   ├── ingestion.py     parse_book(), chunk_book(), ingest_book()
+│   │   ├── citations.py     build_excerpt(), compose_heading(), populate_excerpts()
+│   │   └── embeddings.py    embed_texts(texts, batch_size=100)
+│   ├── api/
+│   │   └── routes/          FastAPI route modules (Phase 4)
+│   ├── ingest.py            one-shot ingestion CLI (not imported by the app)
+│   ├── tests/
+│   │   ├── test_ingestion.py  7 offline assertions — parser + citation output
+│   │   └── test_citations.py  citation unit tests
+│   ├── requirements.txt     runtime deps (fastapi, openai, chromadb, …)
+│   ├── requirements-dev.txt pytest — installed only when INSTALL_DEV=true
+│   └── Dockerfile
+├── frontend/
+│   └── src/
+│       ├── App.jsx
+│       ├── components/      UI components (Phase 5)
+│       ├── lib/             shared utilities (Phase 5)
+│       └── styles/          CSS (Phase 5)
+├── books shared/            source HTML — COPY'd into /app/books/ at build time
+│   ├── little_women.html
+│   └── pride_prejudice.html
+├── docker-compose.yml
+└── docs/
+    ├── architecture.md      ← this file
+    ├── design/              Mowgli screenshots + spec (Phase 1)
+    └── tasks/               story scaffolding (plan + per-story design/tasks/tracker)
+```
+
+---
+
+## Key decisions worth knowing
+
+| Decision | Where it matters |
+|----------|-----------------|
+| Single `"books"` ChromaDB collection; `book_id` field filters per-book | `ingest.py`, `api/routes/` (Phase 4) |
+| `None` metadata values rejected by ChromaDB — omit keys when absent | `ingest.py` metadata loop |
+| Multi-key `where` needs `$and` wrapper | any ChromaDB query with two conditions |
+| `collection.upsert()` not `add()` — re-ingest safe | `ingest.py` |
+| Chunk IDs: `{book_id}_ch{n:03d}_chunk{i:03d}` — deterministic | `ingest.py` |
+| `response.data` sorted by `.index` before extending embeddings list | `core/embeddings.py` |
+| Conversation history tagged with scope to prevent cross-book bleed | `core/prompts.py` (Phase 4) |
+| SSE sources event sent after all tokens, not inline | `api/routes/` (Phase 4) |
+
+Full rationale for every decision is in `docs/tasks/editorial-ai-poc.plan.md`.
+
+---
+
+## Running things
+
+```bash
+# First-time setup
+cp .env.template .env   # fill in Azure OpenAI credentials
+
+# Ingest books (run once; re-running is safe — upsert)
+docker compose build backend
+docker compose run --rm backend python ingest.py
+
+# Start the app
+docker compose up
+
+# Run tests (offline — no Azure needed)
+docker compose run --rm backend python -m pytest tests/ -v
+```
+
+Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`, `AZURE_OPENAI_CHAT_DEPLOYMENT`.
+
+---
+
+## Phase status
+
+| Phase | What | Status |
+|-------|------|--------|
+| 2 | Docker Compose scaffold, FastAPI skeleton, React + Vite skeleton | ✅ done |
+| 3 | Book ingestion pipeline (parse → cite → embed → store) | ✅ done |
+| 4 | AI assistant backend (`/api/chat` SSE, RAG retrieval, prompts) | pending |
+| 5 | Frontend implementation (components, SSE client, source cards) | pending |
+| 6 | Integration + Docker smoke tests | pending |
