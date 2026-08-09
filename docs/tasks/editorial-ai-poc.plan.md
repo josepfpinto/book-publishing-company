@@ -28,7 +28,7 @@ todos:
     status: in_progress
   - id: phase-6
     content: "Phase 6: Integration + Docker"
-    status: pending
+    status: in_progress
   - id: phase-7
     content: "Phase 7: Presentation Deck"
     status: pending
@@ -45,6 +45,7 @@ chat_ids:
   - 21f4c1e6-1278-4a07-a24c-060ea07b4acf
   - 3da96332-eefd-4dc5-a86c-bfc1052521b5
   - b43518dd-3ee1-4191-bfad-dec53e08e74e
+  - 3704cb41-99b0-4b8c-9d47-e0a73dd4939c
   [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
 ---
 
@@ -850,18 +851,18 @@ The gate is integration-only by design — it needs the book HTML. Pure-function
 
 Reference: `docs/design/` — 7 state screenshots + spec. §3 is authoritative where they disagree.
 
-- `[AGENT]` Write `src/styles/globals.css` — the sampled design tokens in §3, Inter + monospace via Google Fonts, base type scale
-- `[AGENT]` Write `src/lib/streamChat.js` — POST + `ReadableStream` SSE parser with partial-frame buffering (§5); `AbortController` for cancellation
-- `[AGENT]` Write `src/components/AppHeader.jsx` — mono eyebrow, "Editorial AI", `VOL. 01` right-aligned, hairline bottom border
-- `[AGENT]` Write `src/components/BookToggle.jsx` — 3-way segmented control, **navy** active fill with white text, book glyph per segment
-- `[AGENT]` Write `src/components/WelcomeState.jsx` — display greeting (mixed italic/roman) + `OR TRY ASKING` + 3 suggested-question buttons that submit on click
-- `[AGENT]` Write `src/components/ChatPanel.jsx` — `CONVERSATION` divider, message list, send handler
-- `[AGENT]` Write `src/components/MessageList.jsx` — turn separators, auto-scroll to bottom during streaming
-- `[AGENT]` Write `src/components/UserMessage.jsx` — right-aligned white card, hairline border, mono timestamp bottom-right
-- `[AGENT]` Write `src/components/AssistantMessage.jsx` — amber left rule + mono `AI` label; pulsing dots while `isLoading`, streaming text thereafter. **No bubble, no shadow.**
-- `[AGENT]` Write `src/components/SourceList.jsx` + `SourceCard.jsx` — up to 3 equal-width cards (`flex: 1 1 0`, no overflow), amber uppercase book title, chapter line, italic quoted excerpt
-- `[AGENT]` Write `src/components/ChatInput.jsx` — auto-expanding textarea (1–3 lines then scroll), send button with the two disabled conditions in §5
-- `[AGENT]` Write `src/App.jsx` — single-column layout, owns conversation state, toggle drives `book_id`; freeze `bookContext` onto each message at submit time
+- `[DONE]` Write `src/styles/globals.css` — the sampled design tokens in §3, Inter + monospace via Google Fonts, base type scale
+- `[DONE]` Write `src/lib/streamChat.js` — POST + `ReadableStream` SSE parser with partial-frame buffering (§5); `AbortController` for cancellation
+- `[DONE]` Write `src/components/AppHeader.jsx` — mono eyebrow, "Editorial AI", `VOL. 01` right-aligned, hairline bottom border
+- `[DONE]` Write `src/components/BookToggle.jsx` — 3-way segmented control, **navy** active fill with white text, book glyph per segment
+- `[DONE]` Write `src/components/WelcomeState.jsx` — display greeting (mixed italic/roman) + `OR TRY ASKING` + 3 suggested-question buttons that submit on click
+- `[DONE]` Write `src/components/ChatPanel.jsx` — `CONVERSATION` divider, message list, send handler
+- `[DONE]` Write `src/components/MessageList.jsx` — turn separators, auto-scroll to bottom during streaming
+- `[DONE]` Write `src/components/UserMessage.jsx` — right-aligned white card, hairline border, mono timestamp bottom-right
+- `[DONE]` Write `src/components/AssistantMessage.jsx` — amber left rule + mono `AI` label; pulsing dots while `isLoading`, streaming text thereafter. **No bubble, no shadow.**
+- `[DONE]` Write `src/components/SourceList.jsx` + `SourceCard.jsx` — up to 3 equal-width cards (`flex: 1 1 0`, no overflow), amber uppercase book title, chapter line, italic quoted excerpt
+- `[DONE]` Write `src/components/ChatInput.jsx` — auto-expanding textarea (1–3 lines then scroll), send button with the two disabled conditions in §5
+- `[DONE]` Write `src/App.jsx` — single-column layout, owns conversation state, toggle drives `book_id`; freeze `bookContext` onto each message at submit time
 - `[MANUAL]` Verify UI in browser at `http://localhost:3000` — side-by-side against all 7 screenshots
 - `[MANUAL]` Verify the source row does **not** clip at 3 cards (§3 defect A)
 
@@ -954,6 +955,7 @@ Tasks for 6.0:
 
 > **Deferred from Phase 5 Story 2 (T4 + T5):** The Vite proxy below is the prerequisite that
 > unblocks full end-to-end verification. Once it is in place, also complete:
+>
 > - **T4 (deferred)** — visual layout verification side-by-side against all 7 design screenshots;
 >   static layout was signed off in Phase 5 but streaming/interaction states require a live backend.
 > - **T5 (deferred)** — confirm 3 source cards share column width equally (`flex: 1 1 0`) with no
