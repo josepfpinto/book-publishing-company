@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.routes.chat import _SCOPE_LABELS, _sse, router
+from core.citation_selection import select_citations as _real_select_citations
 
 
 # ---------------------------------------------------------------------------
@@ -228,17 +229,16 @@ def test_token_streaming_yields_token_events():
 
 def test_sources_event_strips_text_field():
     """Sources sent to the frontend must not include the raw chunk text."""
-    citable = [
-        {"book_title": "Little Women", "chapter_title": "Ch 1", "chapter_number": 1, "text": "long text"},
-    ]
+    chunk = {"book_title": "Little Women", "chapter_title": "Ch 1", "chapter_number": 1, "text": "long text"}
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = []
 
     with patch("api.routes.chat.analyze_query", return_value=[{"query": "q", "book_id": "little_women"}]), \
          patch("api.routes.chat.embed_texts", return_value=[[0.1] * 5]), \
-         patch("api.routes.chat.retrieve", return_value=([], citable)), \
+         patch("api.routes.chat.retrieve", return_value=([chunk], [chunk])), \
          patch("api.routes.chat.build_system_prompt", return_value="sys"), \
-         patch("api.routes.chat.build_messages", return_value=[]):
+         patch("api.routes.chat.build_messages", return_value=[]), \
+         patch("api.routes.chat.select_citations", return_value=[chunk]):
 
         with TestClient(_make_app(mock_client)) as client:
             resp = client.post("/api/chat", json={"book_id": "little_women", "message": "q", "history": []})

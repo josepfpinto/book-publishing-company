@@ -47,6 +47,7 @@ chat_ids:
   - b43518dd-3ee1-4191-bfad-dec53e08e74e
   - 3704cb41-99b0-4b8c-9d47-e0a73dd4939c
   - fa4047cf-1d44-4206-afb6-f95788880b0f
+  - a7bae42b-ceed-457d-b671-097fbf992f60
   [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
 ---
 
@@ -185,24 +186,24 @@ The prompt's amber `#D97706` is a saturated orange; the render's `#CB7026` is a 
 
 #### Where the render overrode the prompt (adopt the render)
 
-| #   | Prompt / earlier plan said                  | Render does                                                                                                                                                                                     | Verdict                                                                                   |
-| --- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 1   | Active toggle segment = **amber** fill      | Active segment = **navy `#181928`** fill, white text; inactive = white on the off-white page                                                                                                    | **Render.** Amber is reserved for accents only — a more coherent system.                  |
-| 2   | AI turn = white **bubble** with drop shadow | AI turn = **no bubble**. A 2px amber left rule, a mono `AI` label + timestamp, then plain body text running the full column width                                                               | **Render.** Long editorial prose reads far better unboxed. Biggest structural difference. |
-| 3   | User bubble = **light amber tint**          | User bubble = **white** card, hairline border, right-aligned, ~55% column width, timestamp bottom-right                                                                                         | **Render.**                                                                               |
-| 4   | Header = app name only                      | Two-line header: mono eyebrow `A READING COMPANION FOR EDITORS` above `Editorial AI`, plus `VOL. 01 / 2024` right-aligned                                                                       | **Render, with one change** — see "Design defects" below.                                 |
-| 5   | Typography = Inter only                     | **Two** typefaces: sans (Inter-like) for body/UI + a **letterspaced uppercase monospace** for every micro-label (eyebrow, `VOL. 01 / 2024`, `CONVERSATION`, `AI`, `SOURCE 01 / 03`, timestamps) | **Render.** The mono micro-label is the design's signature. Add a second font.            |
-| 6   | (absent)                                    | A `CONVERSATION` mono divider above the first turn; hairline rules between turns                                                                                                                | **Render.**                                                                               |
-| 7   | (absent)                                    | Open-book glyph icon inside each toggle segment                                                                                                                                                 | **Render.** Inline SVG, `currentColor`.                                                   |
-| 8   | (absent)                                    | Per-message `14:33` timestamps                                                                                                                                                                  | **Render.** Client-generated — the SSE payload carries no timestamp.                      |
-| 9   | Welcome greeting = an AI message            | Welcome greeting = large centered display line, mixed italic/roman: _"Ready to answer questions about"_ **Little Women** _and_ **Pride & Prejudice.** — not a chat bubble                       | **Render.** Simpler; no fake first turn in the message array.                             |
+| #   | Prompt / earlier plan said                  | Render does                                                                                                                                                                                        | Verdict                                                                                   |
+| --- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | Active toggle segment = **amber** fill      | Active segment = **navy `#181928`** fill, white text; inactive = white on the off-white page                                                                                                       | **Render.** Amber is reserved for accents only — a more coherent system.                  |
+| 2   | AI turn = white **bubble** with drop shadow | AI turn = **no bubble**. A 2px amber left rule, a mono `AI` label + timestamp, then plain body text running the full column width                                                                  | **Render.** Long editorial prose reads far better unboxed. Biggest structural difference. |
+| 3   | User bubble = **light amber tint**          | User bubble = **white** card, hairline border, right-aligned, ~55% column width, timestamp bottom-right                                                                                            | **Render.**                                                                               |
+| 4   | Header = app name only                      | Two-line header: mono eyebrow `A READING COMPANION FOR EDITORS` above `Editorial AI`, plus `VERSION 01 / 2024` right-aligned                                                                       | **Render, with one change** — see "Design defects" below.                                 |
+| 5   | Typography = Inter only                     | **Two** typefaces: sans (Inter-like) for body/UI + a **letterspaced uppercase monospace** for every micro-label (eyebrow, `VERSION 01 / 2024`, `CONVERSATION`, `AI`, `SOURCE 01 / 03`, timestamps) | **Render.** The mono micro-label is the design's signature. Add a second font.            |
+| 6   | (absent)                                    | A `CONVERSATION` mono divider above the first turn; hairline rules between turns                                                                                                                   | **Render.**                                                                               |
+| 7   | (absent)                                    | Open-book glyph icon inside each toggle segment                                                                                                                                                    | **Render.** Inline SVG, `currentColor`.                                                   |
+| 8   | (absent)                                    | Per-message `14:33` timestamps                                                                                                                                                                     | **Render.** Client-generated — the SSE payload carries no timestamp.                      |
+| 9   | Welcome greeting = an AI message            | Welcome greeting = large centered display line, mixed italic/roman: _"Ready to answer questions about"_ **Little Women** _and_ **Pride & Prejudice.** — not a chat bubble                          | **Render.** Simpler; no fake first turn in the message array.                             |
 
 #### Design defects — where the render loses
 
 | #   | Defect                                                                                                                                                                                                                                            | Resolution                                                                                                                                            |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A   | **Source card row overflows the column.** Measured on `5-ai-response-sources.png`: column is 927px of a 2386px render, each card 344px, 3 cards + gaps ≈ 1064px. Card 3 is clipped ~40% at the right edge in every screenshot that shows sources. | Cards are `flex: 1 1 0` inside the column and share the width equally — 3 cards, no overflow, no scroll. Excerpt clamps with `-webkit-line-clamp: 4`. |
-| B   | `VOL. 01 / 2024` hardcodes a year that is already stale.                                                                                                                                                                                          | Render as `VOL. 01` only. Keeps the editorial-masthead device without dating the demo.                                                                |
+| B   | `VERSION 01 / 2024` hardcodes a year that is already stale.                                                                                                                                                                                       | Render as `VERSION 01` only. Keeps the editorial-masthead device without dating the demo.                                                             |
 | C   | Screenshot 7 shows **Little Women** selected while the assistant answers about Charlotte Lucas, Mr. Collins and Darcy (Pride & Prejudice).                                                                                                        | Mock-data artefact — but it is the visible symptom of a **real plan defect**. See §4 "Conversation history and book scope".                           |
 | D   | `SOURCE 01 / 03` counter on each card.                                                                                                                                                                                                            | **Dropped** (ruling unchanged, §5). Ordinal position tells an editor nothing. Card line 1 is the book title alone.                                    |
 | E   | P&P cards read `Chapter 1 — The Entail` / `Chapter 7 — Netherfield`.                                                                                                                                                                              | Invented titles — Austen numbered her chapters. Real card reads `Chapter 1 · p. 3` (ruling unchanged, §4).                                            |
@@ -544,7 +545,7 @@ annotations = choice.message.annotations  # may carry citations or tool results 
 
 ```
 App                          ← owns messages[], currentBookContext, isLoading, activeStreamId
-├── AppHeader                ← mono eyebrow + "Editorial AI" + "VOL. 01" right-aligned
+├── AppHeader                ← mono eyebrow + "Editorial AI" + "VERSION 01" right-aligned
 ├── BookToggle               ← 3-way segmented control, navy active fill, book glyph per segment
 └── ChatPanel
     ├── MessageList          ← auto-scrolls to bottom while streaming
@@ -719,7 +720,7 @@ book-publishing-company/
 │       ├── styles/
 │       │   └── globals.css           # Design tokens sampled in §3
 │       └── components/
-│           ├── AppHeader.jsx         # Mono eyebrow + "Editorial AI" + "VOL. 01"
+│           ├── AppHeader.jsx         # Mono eyebrow + "Editorial AI" + "VERSION 01"
 │           ├── BookToggle.jsx        # 3-way segmented control, navy active fill
 │           ├── ChatPanel.jsx
 │           ├── MessageList.jsx
@@ -854,7 +855,7 @@ Reference: `docs/design/` — 7 state screenshots + spec. §3 is authoritative w
 
 - `[DONE]` Write `src/styles/globals.css` — the sampled design tokens in §3, Inter + monospace via Google Fonts, base type scale
 - `[DONE]` Write `src/lib/streamChat.js` — POST + `ReadableStream` SSE parser with partial-frame buffering (§5); `AbortController` for cancellation
-- `[DONE]` Write `src/components/AppHeader.jsx` — mono eyebrow, "Editorial AI", `VOL. 01` right-aligned, hairline bottom border
+- `[DONE]` Write `src/components/AppHeader.jsx` — mono eyebrow, "Editorial AI", `VERSION 01` right-aligned, hairline bottom border
 - `[DONE]` Write `src/components/BookToggle.jsx` — 3-way segmented control, **navy** active fill with white text, book glyph per segment
 - `[DONE]` Write `src/components/WelcomeState.jsx` — display greeting (mixed italic/roman) + `OR TRY ASKING` + 3 suggested-question buttons that submit on click
 - `[DONE]` Write `src/components/ChatPanel.jsx` — `CONVERSATION` divider, message list, send handler
@@ -867,7 +868,7 @@ Reference: `docs/design/` — 7 state screenshots + spec. §3 is authoritative w
 - `[MANUAL]` Verify UI in browser at `http://localhost:3000` — side-by-side against all 7 screenshots
 - `[MANUAL]` Verify the source row does **not** clip at 3 cards (§3 defect A)
 
-### Phase 6 — Integration + Docker
+### Phase 6 — Integration + Docker DONE
 
 #### 6.0 — SSE error-contract hardening (pre-work, before smoke tests)
 

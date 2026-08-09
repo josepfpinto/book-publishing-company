@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 
 import openai
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
+from core.citation_selection import select_citations
 from core.embeddings import embed_texts
 from core.prompts import build_messages, build_system_prompt
 from core.query_analysis import analyze_query
@@ -50,13 +52,16 @@ def chat(request: Request, body: ChatRequest) -> StreamingResponse:
 
     def generate():
         try:
+            print(f"[chat] book_id={body.book_id!r} message={body.message[:80]!r}", file=sys.stderr)
             sub_queries = analyze_query(body.message, body.book_id, openai_client)
+            print(f"[chat] sub_queries={[(sq['book_id'], sq['query'][:60]) for sq in sub_queries]}", file=sys.stderr)
             embeddings = embed_texts([sq["query"] for sq in sub_queries])
             sub_query_inputs = [
                 {"query_embedding": emb, "book_id": sq["book_id"]}
                 for sq, emb in zip(sub_queries, embeddings)
             ]
             context_chunks, citable = retrieve(sub_query_inputs, collection)
+            print(f"[chat] retrieved {len(context_chunks)} chunks: {[(c.get('book_title','?'), c.get('chapter_title','?')) for c in context_chunks]}", file=sys.stderr)
 
             system_prompt = build_system_prompt(scope_label)
             messages = build_messages(
@@ -66,6 +71,7 @@ def chat(request: Request, body: ChatRequest) -> StreamingResponse:
                 scope_label,
             )
 
+            answer_parts: list[str] = []
             try:
                 completion = openai_client.chat.completions.create(
                     model=deployment,
@@ -86,6 +92,7 @@ def chat(request: Request, body: ChatRequest) -> StreamingResponse:
                         yield _sse({"done": True})
                         return
                     if delta.content:
+                        answer_parts.append(delta.content)
                         yield _sse({"token": delta.content})
             except openai.BadRequestError as exc:
                 if exc.code == "content_filter":
@@ -94,7 +101,10 @@ def chat(request: Request, body: ChatRequest) -> StreamingResponse:
                     return
                 raise
 
-            sources = [{k: v for k, v in c.items() if k != "text"} for c in citable]
+            cited = select_citations(
+                "".join(answer_parts), context_chunks, openai_client, deployment
+            )
+            sources = [{k: v for k, v in c.items() if k != "text"} for c in cited]
             yield _sse({"sources": sources})
             yield _sse({"done": True})
         except Exception as exc:

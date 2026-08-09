@@ -89,7 +89,6 @@ def analyze_query(message: str, book_id: str, openai_client) -> list[dict]:
                 {"role": "user", "content": f"book_id: {book_id}\nquestion: {message}"},
             ],
             response_format={"type": "json_object"},
-            temperature=0,
         )
         data = json.loads(response.choices[0].message.content)
         raw = data.get("sub_queries", [])

@@ -11,7 +11,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ## Tasks
 
-- [ ] **T1** `[AGENT]` Add Vite proxy config to `vite.config.js`
+- [x] **T1** `[AGENT]` Add Vite proxy config to `vite.config.js`
   - **Output:** `frontend/vite.config.js` has a `server.proxy` block forwarding `/api` to `http://backend:8000`
   - **Complexity:** Lightweight
   - **Depends on:** —
@@ -19,13 +19,13 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
     - `vite.config.js` exports a config with `server: { proxy: { '/api': 'http://backend:8000' } }`
     - Existing `plugins: [react()]` entry is preserved
 
-- [ ] **T2** `[MANUAL]` Verify content-filter error surface in the running UI
+- [x] **T2** `[MANUAL]` Verify content-filter error surface in the running UI
   - **Output:** Confirmation that a content-filtered request shows an error card rather than a hung/blank stream
   - **Complexity:** Lightweight
   - **Depends on:** T1, phase-6-sse-hardening merged
   - **Done when:** Sending a message that triggers Azure content policy returns a visible error message in the chat UI within a reasonable timeout; no spinner freeze observed
 
-- [ ] **T3** `[MANUAL]` Run full stack and execute smoke test suite (includes deferred T4 + T5 from Phase 5)
+- [x] **T3** `[MANUAL]` Run full stack and execute smoke test suite (includes deferred T4 + T5 from Phase 5)
   - **Output:** Manual sign-off that the full stack works end-to-end against all 7 design screenshots with correct streaming, source cards, and scope switching
   - **Complexity:** Standard
   - **Depends on:** T1, T2
