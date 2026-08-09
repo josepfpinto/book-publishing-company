@@ -164,10 +164,11 @@ Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OP
 | 2 | Docker Compose scaffold, FastAPI skeleton, React + Vite skeleton | ✅ done |
 | 3 | Book ingestion pipeline (parse → cite → embed → store) | ✅ done |
 | 4 Story 1 | RAG logic tier: deps, query_analysis, retrieval, prompts | ✅ done |
-| 4 Story 2 | HTTP layer: `/api/chat` SSE route, `/api/books`, health endpoint | ✅ done (PR open, T4–T6 manual) |
-| 5 Story 1 | Design system + presentational components (globals.css, streamChat.js, 8 UI components) | ✅ done (PR open) |
-| 5 Story 2 | App composition (App.jsx, ChatPanel, MessageList, stateful wiring) | ✅ done (PR open; T4/T5 streaming verify deferred to Phase 6 — needs Vite proxy) |
-| 6 | Integration + Docker smoke tests | pending |
+| 4 Story 2 | HTTP layer: `/api/chat` SSE route, `/api/books`, health endpoint | ✅ done |
+| 5 Story 1 | Design system + presentational components (globals.css, streamChat.js, 8 UI components) | ✅ done |
+| 5 Story 2 | App composition (App.jsx, ChatPanel, MessageList, stateful wiring) | ✅ done |
+| 6 Story 1 | SSE hardening — top-level error handling, content filter, refusal detection | ✅ done |
+| 6 Story 2 | Packaging — README + submission zip | 🔄 in progress |
 
 ---
 
