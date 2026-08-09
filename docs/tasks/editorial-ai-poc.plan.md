@@ -846,7 +846,7 @@ The gate is integration-only by design — it needs the book HTML. Pure-function
 - `[DONE]` Test chat streaming: `curl -N -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" -d '{"book_id":"little_women","message":"Who is Jo?","history":[]}'`
 - `[DONE]` Test scope containment: send a P&P question with `book_id: "little_women"` and a P&P-heavy `history` — the model must decline within scope, not answer from history
 
-### Phase 5 — Frontend Implementation
+### Phase 5 — Frontend Implementation DONE
 
 Reference: `docs/design/` — 7 state screenshots + spec. §3 is authoritative where they disagree.
 
@@ -952,15 +952,23 @@ Tasks for 6.0:
 
 #### 6.1 — Stack bring-up and smoke tests
 
+> **Deferred from Phase 5 Story 2 (T4 + T5):** The Vite proxy below is the prerequisite that
+> unblocks full end-to-end verification. Once it is in place, also complete:
+> - **T4 (deferred)** — visual layout verification side-by-side against all 7 design screenshots;
+>   static layout was signed off in Phase 5 but streaming/interaction states require a live backend.
+> - **T5 (deferred)** — confirm 3 source cards share column width equally (`flex: 1 1 0`) with no
+>   overflow or horizontal scrollbar (§3 defect A fix).
+
 - `[AGENT]` Add Vite proxy config (`/api` → `http://backend:8000`) for Docker networking
 - `[MANUAL]` Run full stack: `docker compose up --build`
-- `[MANUAL]` End-to-end smoke tests:
+- `[MANUAL]` End-to-end smoke tests (includes deferred T4 + T5 from Phase 5 Story 2):
   - Ask "What is the plot of Little Women?" (single book)
   - Ask "How do Elizabeth Bennet and Jo March compare as protagonists?" (cross-book comparison)
   - **Scope switch** — ask a cross-book question under "Both Books", switch the toggle to "Little Women", then ask a P&P follow-up. Prior turns must stay visible; the answer must stay inside Little Women or decline. This is the §4 history-scope defect; it is also the most interesting thing to demo.
-  - Verify source citation cards appear with correct book/chapter attribution, 3 across, none clipped
-  - Verify streaming (tokens appear progressively, not all at once)
-  - Verify a fresh reload returns to WelcomeState with the toggle back on "Both Books"
+  - Verify source citation cards appear with correct book/chapter attribution, 3 across, none clipped **(T5)**
+  - Verify streaming (tokens appear progressively, not all at once) **(T4)**
+  - Verify a fresh reload returns to WelcomeState with the toggle back on "Both Books" **(T4)**
+  - Verify all 7 design screenshots match the running app **(T4)**
 
 #### 6.2 — Packaging
 
