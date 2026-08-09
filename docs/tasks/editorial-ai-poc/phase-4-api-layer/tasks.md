@@ -39,19 +39,19 @@ Dependency-ordered. Tasks T1–T3 are `[AGENT]`; T4–T6 are `[MANUAL]`.
   - **Depends on:** T1, T2, Story 1
   - **Done when:** `uvicorn main:app` starts without error; `GET /api/health` returns `{"status": "ok"}`; CORS allows origins `http://localhost:3000` and `http://frontend:3000`; both routers are mounted with prefix `/api`
 
-- [ ] **T4** `[MANUAL]` Verify health endpoint
+- [x] **T4** `[MANUAL]` Verify health endpoint
   - **Output:** confirmed 200 response
   - **Complexity:** Lightweight
   - **Depends on:** T3
   - **Done when:** `curl http://localhost:8000/api/health` returns `{"status":"ok"}`
 
-- [ ] **T5** `[MANUAL]` Test chat streaming end-to-end
+- [x] **T5** `[MANUAL]` Test chat streaming end-to-end
   - **Output:** confirmed SSE token stream with source citations
   - **Complexity:** Lightweight
   - **Depends on:** T4
   - **Done when:** `curl -N -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" -d '{"book_id":"little_women","message":"Who is Jo?","history":[]}'` streams token events and ends with a sources event containing LW chapter metadata, followed by `{"done":true}`
 
-- [ ] **T6** `[MANUAL]` Test scope containment
+- [x] **T6** `[MANUAL]` Test scope containment
   - **Output:** confirmed the model stays within the active scope when history contains cross-scope turns
   - **Complexity:** Standard
   - **Depends on:** T5
