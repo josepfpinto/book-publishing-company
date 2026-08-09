@@ -11,7 +11,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ## Tasks
 
-- [ ] **T1** `[AGENT]` Add Vite proxy config to `vite.config.js`
+- [x] **T1** `[AGENT]` Add Vite proxy config to `vite.config.js`
   - **Output:** `frontend/vite.config.js` has a `server.proxy` block forwarding `/api` to `http://backend:8000`
   - **Complexity:** Lightweight
   - **Depends on:** —
