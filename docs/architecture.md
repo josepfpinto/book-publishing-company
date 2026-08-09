@@ -67,14 +67,20 @@ book-publishing-company/
 │   │   └── prompts.py         build_system_prompt(), build_messages()
 │   ├── api/
 │   │   ├── deps.py            FastAPI lifespan — ChromaDB + AzureOpenAI singletons
-│   │   └── routes/            FastAPI route modules (Phase 4 Story 2)
+│   │   └── routes/
+│   │       ├── books.py       GET /api/books — list ingested books with chapter counts
+│   │       └── chat.py        POST /api/chat — SSE streaming RAG pipeline
 │   ├── ingest.py              one-shot ingestion CLI (not imported by the app)
+│   ├── main.py                FastAPI app — CORS, lifespan, routers, health check
 │   ├── tests/
 │   │   ├── test_ingestion.py    7 offline assertions — parser + citation output
 │   │   ├── test_citations.py    citation unit tests
 │   │   ├── test_query_analysis.py  analyze_query decomposition + repair logic
 │   │   ├── test_retrieval.py    multi-sub-query retrieval, dedup, score merge
-│   │   └── test_prompts.py      system prompt and message assembly
+│   │   ├── test_prompts.py      system prompt and message assembly
+│   │   ├── test_books.py        books route aggregation logic
+│   │   ├── test_chat.py         chat route — SSE contract, embedding pipeline, error handling
+│   │   └── test_main.py         health endpoint — no app.state dependency
 │   ├── requirements.txt     runtime deps (fastapi, openai, chromadb, …)
 │   ├── requirements-dev.txt pytest — installed only when INSTALL_DEV=true
 │   └── Dockerfile
@@ -130,7 +136,7 @@ docker compose up
 docker compose run --rm backend python -m pytest tests/ -v
 ```
 
-Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`, `AZURE_OPENAI_CHAT_DEPLOYMENT`.
+Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`.
 
 ---
 
@@ -141,6 +147,6 @@ Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OP
 | 2 | Docker Compose scaffold, FastAPI skeleton, React + Vite skeleton | ✅ done |
 | 3 | Book ingestion pipeline (parse → cite → embed → store) | ✅ done |
 | 4 Story 1 | RAG logic tier: deps, query_analysis, retrieval, prompts | ✅ done |
-| 4 Story 2 | HTTP layer: `/api/chat` SSE route, health endpoint | pending |
+| 4 Story 2 | HTTP layer: `/api/chat` SSE route, `/api/books`, health endpoint | ✅ done (PR open, T4–T6 manual) |
 | 5 | Frontend implementation (components, SSE client, source cards) | pending |
 | 6 | Integration + Docker smoke tests | pending |
