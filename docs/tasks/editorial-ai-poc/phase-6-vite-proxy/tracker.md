@@ -3,7 +3,7 @@ name: phase-6-vite-proxy
 plan: editorial-ai-poc
 phase: "phase-6"
 type: tracker
-status: in_progress
+status: done
 branch: feat/phase-6-vite-proxy
 code_repo: book-publishing-company
 ---
