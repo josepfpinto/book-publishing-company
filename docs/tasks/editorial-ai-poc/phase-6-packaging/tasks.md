@@ -11,7 +11,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ## Tasks
 
-- [ ] **T1** `[AGENT]` Update `README.md` with architecture, key decisions, and trade-offs
+- [x] **T1** `[AGENT]` Update `README.md` with architecture, key decisions, and trade-offs
   - **Output:** `book-publishing-company/README.md` updated in place with Architecture, Key Decisions, and Trade-offs/Deferred sections
   - **Complexity:** Standard
   - **Depends on:** —
@@ -21,7 +21,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
     - Key Decisions table contains ≥5 rows covering: FastAPI + SSE, ChromaDB embedded mode, chapter-aware chunking, `fetch`+ReadableStream (not EventSource), conversation scope tagging in history
     - Trade-offs / Deferred section references at minimum: RAG depth spike (Phase 8), auth, persistent history, production book storage
 
-- [ ] **T2** `[AGENT]` Create submission `.zip`
+- [x] **T2** `[AGENT]` Create submission `.zip`
   - **Output:** `book-publishing-company-submission.zip` at the workspace root, containing the full project minus secrets and build artefacts
   - **Complexity:** Lightweight
   - **Depends on:** T1
@@ -31,7 +31,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
     - `unzip -l book-publishing-company-submission.zip | grep -E '\.env$|node_modules|__pycache__|data/chroma'` returns empty
     - Archive contains `book-publishing-company/README.md`, `docker-compose.yml`, `backend/`, `frontend/`, `books shared/`
 
-- [ ] **T3** `[MANUAL]` Review README and verify zip integrity
+- [x] **T3** `[MANUAL]` Review README and verify zip integrity
   - **Output:** Signed-off README and confirmed deliverable zip
   - **Complexity:** Lightweight
   - **Depends on:** T1, T2
