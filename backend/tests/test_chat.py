@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import openai
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -23,6 +21,14 @@ class _ContentFilterError(openai.BadRequestError):
 
     def __init__(self):
         Exception.__init__(self, "content_filter")
+
+
+class _MidStreamRaiser:
+    """Yields one token chunk then raises _ContentFilterError (simulates mid-stream filter)."""
+    def __iter__(self):
+        from types import SimpleNamespace as NS
+        yield NS(choices=[NS(delta=NS(content="start", refusal=None), finish_reason=None)])
+        raise _ContentFilterError()
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +116,7 @@ def test_content_filter_yields_error_event():
 
     events = _parse_sse(resp)
     assert any("error" in e for e in events)
+    assert events.count({"done": True}) == 1
 
 
 def test_content_filter_yields_done_event():
@@ -124,6 +131,7 @@ def test_content_filter_yields_done_event():
 
     events = _parse_sse(resp)
     assert {"done": True} in events
+    assert events.count({"done": True}) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -199,8 +207,8 @@ def test_unknown_book_id_returns_422():
 def test_token_streaming_yields_token_events():
     from types import SimpleNamespace as NS
 
-    chunk1 = NS(choices=[NS(delta=NS(content="Hello"))])
-    chunk2 = NS(choices=[NS(delta=NS(content=" world"))])
+    chunk1 = NS(choices=[NS(delta=NS(content="Hello", refusal=None), finish_reason=None)])
+    chunk2 = NS(choices=[NS(delta=NS(content=" world", refusal=None), finish_reason=None)])
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = [chunk1, chunk2]
 
@@ -241,3 +249,98 @@ def test_sources_event_strips_text_field():
     source = sources_events[0]["sources"][0]
     assert "text" not in source
     assert source["book_title"] == "Little Women"
+
+
+# ---------------------------------------------------------------------------
+# Gap A — outer envelope catches pre-LLM exceptions
+# ---------------------------------------------------------------------------
+
+def test_pre_llm_exception_yields_error_and_done():
+    """Any exception before the LLM call yields error + done; client never hangs."""
+    mock_client = MagicMock()
+
+    with patch("api.routes.chat.analyze_query", side_effect=RuntimeError("db down")), \
+         _COMMON_PATCHES["embed_texts"], _COMMON_PATCHES["retrieve"], \
+         _COMMON_PATCHES["build_system_prompt"], _COMMON_PATCHES["build_messages"]:
+        with TestClient(_make_app(mock_client)) as client:
+            resp = client.post("/api/chat", json={"book_id": "little_women", "message": "test", "history": []})
+
+    events = _parse_sse(resp)
+    assert any("error" in e for e in events)
+    assert events.count({"done": True}) == 1
+
+
+# ---------------------------------------------------------------------------
+# Gap B — BadRequestError raised during chunk iteration yields error + done
+# ---------------------------------------------------------------------------
+
+def test_mid_stream_content_filter_yields_error_and_done():
+    """BadRequestError(content_filter) mid-iteration preserves prior tokens then terminates cleanly."""
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = _MidStreamRaiser()
+
+    with _COMMON_PATCHES["analyze_query"], _COMMON_PATCHES["embed_texts"], \
+         _COMMON_PATCHES["retrieve"], _COMMON_PATCHES["build_system_prompt"], \
+         _COMMON_PATCHES["build_messages"]:
+        with TestClient(_make_app(mock_client)) as client:
+            resp = client.post("/api/chat", json={"book_id": "little_women", "message": "test", "history": []})
+
+    events = _parse_sse(resp)
+    token_idx = events.index({"token": "start"})
+    error_idx = next(i for i, e in enumerate(events) if "error" in e)
+    done_idx = events.index({"done": True})
+    assert token_idx < error_idx < done_idx
+    assert events.count({"done": True}) == 1
+
+
+# ---------------------------------------------------------------------------
+# Gap C — in-stream refusal and content_filter finish_reason
+# ---------------------------------------------------------------------------
+
+def test_delta_refusal_yields_error_event():
+    """A chunk with delta.refusal set yields an error event containing the refusal text."""
+    from types import SimpleNamespace as NS
+
+    refusal_text = "This request is not appropriate."
+    chunk = NS(choices=[NS(delta=NS(content=None, refusal=refusal_text), finish_reason=None)])
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = [chunk]
+
+    with _COMMON_PATCHES["analyze_query"], _COMMON_PATCHES["embed_texts"], \
+         _COMMON_PATCHES["retrieve"], _COMMON_PATCHES["build_system_prompt"], \
+         _COMMON_PATCHES["build_messages"]:
+        with TestClient(_make_app(mock_client)) as client:
+            resp = client.post("/api/chat", json={"book_id": "little_women", "message": "test", "history": []})
+
+    events = _parse_sse(resp)
+    error_events = [e for e in events if "error" in e]
+    assert len(error_events) == 1
+    assert refusal_text in error_events[0]["error"]
+    error_idx = next(i for i, e in enumerate(events) if "error" in e)
+    done_idx = events.index({"done": True})
+    assert error_idx < done_idx
+    assert events.count({"done": True}) == 1
+
+
+def test_finish_reason_content_filter_yields_error_event():
+    """A chunk with finish_reason=='content_filter' yields a content-filter error then done."""
+    from types import SimpleNamespace as NS
+
+    chunk = NS(choices=[NS(delta=NS(content=None, refusal=None), finish_reason="content_filter")])
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = [chunk]
+
+    with _COMMON_PATCHES["analyze_query"], _COMMON_PATCHES["embed_texts"], \
+         _COMMON_PATCHES["retrieve"], _COMMON_PATCHES["build_system_prompt"], \
+         _COMMON_PATCHES["build_messages"]:
+        with TestClient(_make_app(mock_client)) as client:
+            resp = client.post("/api/chat", json={"book_id": "little_women", "message": "test", "history": []})
+
+    events = _parse_sse(resp)
+    error_events = [e for e in events if "error" in e]
+    assert len(error_events) == 1
+    assert "Content filtered by Azure policy" in error_events[0]["error"]
+    error_idx = next(i for i, e in enumerate(events) if "error" in e)
+    done_idx = events.index({"done": True})
+    assert error_idx < done_idx
+    assert events.count({"done": True}) == 1
