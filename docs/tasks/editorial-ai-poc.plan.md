@@ -868,7 +868,7 @@ Reference: `docs/design/` — 7 state screenshots + spec. §3 is authoritative w
 - `[MANUAL]` Verify UI in browser at `http://localhost:3000` — side-by-side against all 7 screenshots
 - `[MANUAL]` Verify the source row does **not** clip at 3 cards (§3 defect A)
 
-### Phase 6 — Integration + Docker
+### Phase 6 — Integration + Docker DONE
 
 #### 6.0 — SSE error-contract hardening (pre-work, before smoke tests)
 

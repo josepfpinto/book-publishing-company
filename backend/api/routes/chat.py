@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 
 import openai
 from fastapi import APIRouter, Request
@@ -51,13 +52,16 @@ def chat(request: Request, body: ChatRequest) -> StreamingResponse:
 
     def generate():
         try:
+            print(f"[chat] book_id={body.book_id!r} message={body.message[:80]!r}", file=sys.stderr)
             sub_queries = analyze_query(body.message, body.book_id, openai_client)
+            print(f"[chat] sub_queries={[(sq['book_id'], sq['query'][:60]) for sq in sub_queries]}", file=sys.stderr)
             embeddings = embed_texts([sq["query"] for sq in sub_queries])
             sub_query_inputs = [
                 {"query_embedding": emb, "book_id": sq["book_id"]}
                 for sq, emb in zip(sub_queries, embeddings)
             ]
             context_chunks, citable = retrieve(sub_query_inputs, collection)
+            print(f"[chat] retrieved {len(context_chunks)} chunks: {[(c.get('book_title','?'), c.get('chapter_title','?')) for c in context_chunks]}", file=sys.stderr)
 
             system_prompt = build_system_prompt(scope_label)
             messages = build_messages(
