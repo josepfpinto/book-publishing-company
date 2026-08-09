@@ -150,3 +150,9 @@ Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OP
 | 4 Story 2 | HTTP layer: `/api/chat` SSE route, `/api/books`, health endpoint | ✅ done (PR open, T4–T6 manual) |
 | 5 | Frontend implementation (components, SSE client, source cards) | pending |
 | 6 | Integration + Docker smoke tests | pending |
+
+---
+
+## See also
+
+- [`docs/api.md`](api.md) — HTTP endpoint contracts, SSE wire protocol, source object fields, `book_id` valid values (Phase 5 frontend reference)
