@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 import openai
 from fastapi import APIRouter, Request
@@ -14,6 +15,7 @@ from core.query_analysis import analyze_query
 from core.retrieval import retrieve
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 _SCOPE_LABELS: dict[str, str] = {
     "little_women": "Little Women",
@@ -47,44 +49,57 @@ def chat(request: Request, body: ChatRequest) -> StreamingResponse:
     scope_label = _SCOPE_LABELS[body.book_id]
 
     def generate():
-        sub_queries = analyze_query(body.message, body.book_id, openai_client)
-        embeddings = embed_texts([sq["query"] for sq in sub_queries])
-        sub_query_inputs = [
-            {"query_embedding": emb, "book_id": sq["book_id"]}
-            for sq, emb in zip(sub_queries, embeddings)
-        ]
-        context_chunks, citable = retrieve(sub_query_inputs, collection)
-
-        system_prompt = build_system_prompt(scope_label)
-        messages = build_messages(
-            system_prompt,
-            body.history + [{"role": "user", "content": body.message}],
-            context_chunks,
-            scope_label,
-        )
-
         try:
-            completion = openai_client.chat.completions.create(
-                model=deployment,
-                messages=messages,
-                stream=True,
+            sub_queries = analyze_query(body.message, body.book_id, openai_client)
+            embeddings = embed_texts([sq["query"] for sq in sub_queries])
+            sub_query_inputs = [
+                {"query_embedding": emb, "book_id": sq["book_id"]}
+                for sq, emb in zip(sub_queries, embeddings)
+            ]
+            context_chunks, citable = retrieve(sub_query_inputs, collection)
+
+            system_prompt = build_system_prompt(scope_label)
+            messages = build_messages(
+                system_prompt,
+                body.history + [{"role": "user", "content": body.message}],
+                context_chunks,
+                scope_label,
             )
-        except openai.BadRequestError as exc:
-            if exc.code == "content_filter":
-                yield _sse({"error": "Content filtered by Azure policy"})
-                yield _sse({"done": True})
-                return
-            raise
 
-        for chunk in completion:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta
-            if delta.content:
-                yield _sse({"token": delta.content})
+            try:
+                completion = openai_client.chat.completions.create(
+                    model=deployment,
+                    messages=messages,
+                    stream=True,
+                )
+                for chunk in completion:
+                    if not chunk.choices:
+                        continue
+                    choice = chunk.choices[0]
+                    delta = choice.delta
+                    if delta.refusal:
+                        yield _sse({"error": f"Refusal: {delta.refusal}"})
+                        yield _sse({"done": True})
+                        return
+                    if choice.finish_reason == "content_filter":
+                        yield _sse({"error": "Content filtered by Azure policy"})
+                        yield _sse({"done": True})
+                        return
+                    if delta.content:
+                        yield _sse({"token": delta.content})
+            except openai.BadRequestError as exc:
+                if exc.code == "content_filter":
+                    yield _sse({"error": "Content filtered by Azure policy"})
+                    yield _sse({"done": True})
+                    return
+                raise
 
-        sources = [{k: v for k, v in c.items() if k != "text"} for c in citable]
-        yield _sse({"sources": sources})
-        yield _sse({"done": True})
+            sources = [{k: v for k, v in c.items() if k != "text"} for c in citable]
+            yield _sse({"sources": sources})
+            yield _sse({"done": True})
+        except Exception as exc:
+            logger.error("SSE stream error: %s", exc)
+            yield _sse({"error": "An unexpected error occurred"})
+            yield _sse({"done": True})
 
     return StreamingResponse(generate(), media_type="text/event-stream")
