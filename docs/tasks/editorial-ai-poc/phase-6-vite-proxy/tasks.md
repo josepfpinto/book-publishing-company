@@ -19,10 +19,16 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
     - `vite.config.js` exports a config with `server: { proxy: { '/api': 'http://backend:8000' } }`
     - Existing `plugins: [react()]` entry is preserved
 
-- [ ] **T2** `[MANUAL]` Run full stack and execute smoke test suite (includes deferred T4 + T5 from Phase 5)
+- [ ] **T2** `[MANUAL]` Verify content-filter error surface in the running UI
+  - **Output:** Confirmation that a content-filtered request shows an error card rather than a hung/blank stream
+  - **Complexity:** Lightweight
+  - **Depends on:** T1, phase-6-sse-hardening merged
+  - **Done when:** Sending a message that triggers Azure content policy returns a visible error message in the chat UI within a reasonable timeout; no spinner freeze observed
+
+- [ ] **T3** `[MANUAL]` Run full stack and execute smoke test suite (includes deferred T4 + T5 from Phase 5)
   - **Output:** Manual sign-off that the full stack works end-to-end against all 7 design screenshots with correct streaming, source cards, and scope switching
   - **Complexity:** Standard
-  - **Depends on:** T1, Story 1 complete (phase-6-sse-hardening)
+  - **Depends on:** T1, T2
   - **Done when:** All of the following pass:
     - `docker compose up --build` starts cleanly; both containers healthy
     - "What is the plot of Little Women?" returns a streaming answer with source cards

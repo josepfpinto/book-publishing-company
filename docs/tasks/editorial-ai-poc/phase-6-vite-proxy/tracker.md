@@ -13,7 +13,8 @@ code_repo: ""
 | Task | Status  | Note |
 | ---- | ------- | ---- |
 | T1   | pending |      |
-| T2   | pending | manual; depends on phase-6-sse-hardening being complete |
+| T2   | pending | manual; verify content-filter error card in running UI |
+| T3   | pending | manual; full smoke test suite (T4+T5 from Phase 5) |
 
 ## Log
 

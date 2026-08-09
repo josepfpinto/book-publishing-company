@@ -13,7 +13,7 @@ code_repo: book-publishing-company
 | Task | Status  | Note |
 | ---- | ------- | ---- |
 | T1   | done    | deterministic gate PASS; tribunal SHIP (2 rounds: ITERATE→SHIP_WITH_CAVEATS; caveat 1 fixed, caveats 2+3 deferred) |
-| T2   | deferred | [MANUAL] — blocked on phase-6-vite-proxy (running stack not yet available) |
+| T2   | moved    | moved to phase-6-vite-proxy T2 (depends on running stack from that story) |
 
 ## Log
 
