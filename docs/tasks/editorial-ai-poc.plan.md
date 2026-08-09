@@ -864,6 +864,90 @@ Reference: `docs/design/` — 7 state screenshots + spec. §3 is authoritative w
 
 ### Phase 6 — Integration + Docker
 
+#### 6.0 — SSE error-contract hardening (pre-work, before smoke tests)
+
+Three gaps were deliberately deferred from Phase 4 Story 2 (documented in PR #7). They must be closed before the smoke tests in 6.1 because any transient Azure error during testing would produce a silent hung stream that is indistinguishable from a freeze.
+
+**Gap A — Pre-LLM exception swallows the `done` frame**
+
+Root cause: `analyze_query`, `embed_texts`, and `retrieve` all run before the `try/except` in `generate()`. Any exception there exits the generator without yielding `{"done": true}`, leaving the client's SSE reader hanging on a committed HTTP 200 connection.
+
+Fix — outer SSE error envelope: wrap the entire `generate()` body in a broad `try/except Exception`. On any exception, yield `{"error": "..."}` then `{"done": true}`, then log and swallow (do not re-raise — headers already committed). The inner `content_filter` guard stays unchanged inside this outer envelope.
+
+```python
+def generate():
+    try:
+        # ... all pre-LLM and LLM work ...
+        yield _sse({"sources": sources})
+        yield _sse({"done": True})
+    except Exception as exc:
+        logger.error("SSE stream error: %s", exc, exc_info=True)
+        yield _sse({"error": "An error occurred. Please try again."})
+        yield _sse({"done": True})
+```
+
+Test to add: mock `analyze_query` to raise → assert client receives `{"error": "..."}` event then `{"done": true}` event, not a silent empty response.
+
+**Gap B — Mid-stream Azure content filter is not caught**
+
+Root cause: the existing `try/except openai.BadRequestError` wraps only `.create()`. Azure can also raise `BadRequestError` during `for chunk in completion:` when the filter fires inside the streaming response.
+
+Fix — expand the guard to cover the iteration loop:
+
+```python
+try:
+    completion = client.chat.completions.create(stream=True, ...)
+    for chunk in completion:           # now inside the guard
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        if delta.content:
+            yield _sse({"token": delta.content})
+        # refusal check — see Gap C below
+except openai.BadRequestError as exc:
+    if exc.code == "content_filter":
+        yield _sse({"error": "Content filtered by Azure policy"})
+        yield _sse({"done": True})
+        return
+    raise  # non-filter errors bubble to the outer envelope (Gap A)
+```
+
+Test to add: mock `completion.__iter__` to raise `BadRequestError(code="content_filter")` on second chunk → assert error event + done event emitted, tokens already yielded preserved.
+
+**Gap C — Model refusal (`delta.refusal`) produces a silent empty response**
+
+Root cause: when the model declines to answer, `delta.refusal` is populated instead of `delta.content`. The loop only checks `delta.content`, so a refusal yields zero token events — the user sees a blank answer with no explanation. Azure mid-stream filters can also surface as `finish_reason == "content_filter"` on a chunk (not an exception) in some API versions.
+
+Fix — handle both in the streaming loop:
+
+```python
+for chunk in completion:
+    if not chunk.choices:
+        continue
+    choice = chunk.choices[0]
+    delta = choice.delta
+    if delta.content:
+        yield _sse({"token": delta.content})
+    elif getattr(delta, "refusal", None):
+        yield _sse({"error": f"The model declined to answer: {delta.refusal}"})
+        yield _sse({"done": True})
+        return
+    elif choice.finish_reason == "content_filter":
+        yield _sse({"error": "Content filtered by Azure policy"})
+        yield _sse({"done": True})
+        return
+```
+
+Test to add: mock a chunk with `delta.refusal = "I cannot answer that"` → assert error event with the refusal text is emitted; mock a chunk with `finish_reason = "content_filter"` → assert error event emitted (not just a silent `done`).
+
+**Implementation order:** A → B → C. A provides the safety net; B and C are applied inside it. All three can ship in a single `[AGENT]` task with tests.
+
+Tasks for 6.0:
+- `[AGENT]` Implement SSE error-contract hardening in `backend/api/routes/chat.py` (Gaps A, B, C above); add tests for all three error paths
+- `[MANUAL]` Verify: trigger a content-filter message in the running UI and confirm an error card appears instead of a hung stream
+
+#### 6.1 — Stack bring-up and smoke tests
+
 - `[AGENT]` Add Vite proxy config (`/api` → `http://backend:8000`) for Docker networking
 - `[MANUAL]` Run full stack: `docker compose up --build`
 - `[MANUAL]` End-to-end smoke tests:
@@ -873,7 +957,10 @@ Reference: `docs/design/` — 7 state screenshots + spec. §3 is authoritative w
   - Verify source citation cards appear with correct book/chapter attribution, 3 across, none clipped
   - Verify streaming (tokens appear progressively, not all at once)
   - Verify a fresh reload returns to WelcomeState with the toggle back on "Both Books"
-- `[AGENT]` Write `README.md` with setup instructions, approach explanation, key decisions + trade-offs
+
+#### 6.2 — Packaging
+
+- `[AGENT]` Update `README.md` with setup instructions, approach explanation, key decisions + trade-offs (a draft already exists at project root; update or replace)
 - `[AGENT]` Create `.zip` of project (excluding `.env`, `node_modules`, `__pycache__`, chroma data)
 
 ### Phase 7 — Presentation Deck
