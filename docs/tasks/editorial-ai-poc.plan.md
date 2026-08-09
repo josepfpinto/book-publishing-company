@@ -25,7 +25,7 @@ todos:
     status: in_progress
   - id: phase-5
     content: "Phase 5: Frontend Implementation"
-    status: pending
+    status: in_progress
   - id: phase-6
     content: "Phase 6: Integration + Docker"
     status: pending
@@ -42,6 +42,8 @@ chat_ids:
   - 919029eb-0049-4b4c-a665-0f1fafe273bc
   - 85cfa408-0dda-4028-9ee8-89ed5b4a7939
   - 51fdc930-8c2a-4944-b888-f4c0e0e2ce4c
+  - 21f4c1e6-1278-4a07-a24c-060ea07b4acf
+  - 3da96332-eefd-4dc5-a86c-bfc1052521b5
   [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
 ---
 
@@ -831,17 +833,17 @@ The gate is integration-only by design — it needs the book HTML. Pure-function
 
 > **`docs/tasks/editorial-ai-poc.parser-probe.py` has been deleted** — it was the validated extraction + citation recipe that de-risked Phase 3, superseded once `core/ingestion.py` and `core/citations.py` shipped. Everything durable from it survives: the six DOM fixes in the §4 defect table, the sentence regex and heading rules in `core/citations.py`, and its assertions as `tests/test_ingestion.py`. Note its `excerpt()` carried the same `target` defect described in §4 — the bug was inherited from the recipe, not introduced in translation.
 
-### Phase 4 — AI Assistant Backend
+### Phase 4 — AI Assistant Backend DONE
 
-- `[AGENT]` Write `backend/core/retrieval.py` — top-5 query (`where` filter for a single book, unfiltered for `"both"`), returns the top 3 as the citable set
-- `[AGENT]` Write `backend/core/prompts.py` — system prompt with active-scope statement + context-tagged history (see §4 "Conversation history and book scope")
-- `[AGENT]` Write `backend/api/deps.py` — shared ChromaDB + AzureOpenAI client singletons
-- `[AGENT]` Write `backend/api/routes/books.py` — `GET /api/books`
-- `[AGENT]` Write `backend/api/routes/chat.py` — `POST /api/chat` with SSE streaming; handles `book_id` of `little_women` | `pride_prejudice` | `both`; catches `content_filter` 400 and emits an `error` event
-- `[AGENT]` Write `backend/main.py` — FastAPI app wiring CORS, routes, lifespan
-- `[MANUAL]` Test endpoints directly: `curl http://localhost:8000/api/health`
-- `[MANUAL]` Test chat streaming: `curl -N -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" -d '{"book_id":"little_women","message":"Who is Jo?","history":[]}'`
-- `[MANUAL]` Test scope containment: send a P&P question with `book_id: "little_women"` and a P&P-heavy `history` — the model must decline within scope, not answer from history
+- `DONE` Write `backend/core/retrieval.py` — top-5 query (`where` filter for a single book, unfiltered for `"both"`), returns the top 3 as the citable set
+- `DONE` Write `backend/core/prompts.py` — system prompt with active-scope statement + context-tagged history (see §4 "Conversation history and book scope")
+- `DONE` Write `backend/api/deps.py` — shared ChromaDB + AzureOpenAI client singletons
+- `DONE` Write `backend/api/routes/books.py` — `GET /api/books`
+- `[DONE]` Write `backend/api/routes/chat.py` — `POST /api/chat` with SSE streaming; handles `book_id` of `little_women` | `pride_prejudice` | `both`; catches `content_filter` 400 and emits an `error` event
+- `[DONE]` Write `backend/main.py` — FastAPI app wiring CORS, routes, lifespan
+- `[DONE]` Test endpoints directly: `curl http://localhost:8000/api/health`
+- `[DONE]` Test chat streaming: `curl -N -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" -d '{"book_id":"little_women","message":"Who is Jo?","history":[]}'`
+- `[DONE]` Test scope containment: send a P&P question with `book_id: "little_women"` and a P&P-heavy `history` — the model must decline within scope, not answer from history
 
 ### Phase 5 — Frontend Implementation
 
@@ -943,6 +945,7 @@ Test to add: mock a chunk with `delta.refusal = "I cannot answer that"` → asse
 **Implementation order:** A → B → C. A provides the safety net; B and C are applied inside it. All three can ship in a single `[AGENT]` task with tests.
 
 Tasks for 6.0:
+
 - `[AGENT]` Implement SSE error-contract hardening in `backend/api/routes/chat.py` (Gaps A, B, C above); add tests for all three error paths
 - `[MANUAL]` Verify: trigger a content-filter message in the running UI and confirm an error card appears instead of a hung stream
 

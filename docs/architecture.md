@@ -85,11 +85,24 @@ book-publishing-company/
 │   ├── requirements-dev.txt pytest — installed only when INSTALL_DEV=true
 │   └── Dockerfile
 ├── frontend/
+│   ├── eslint.config.js
 │   └── src/
-│       ├── App.jsx
-│       ├── components/      UI components (Phase 5)
-│       ├── lib/             shared utilities (Phase 5)
-│       └── styles/          CSS (Phase 5)
+│       ├── App.jsx          bare stub — Story 2 wires full app state
+│       ├── main.jsx         entry point — imports globals.css
+│       ├── components/
+│       │   ├── AppHeader.jsx
+│       │   ├── AssistantMessage.jsx  amber left-rule, mono AI label, pulsing dots
+│       │   ├── BookToggle.jsx        3-segment pill with inline SVG book glyph
+│       │   ├── ChatInput.jsx         auto-expanding textarea, two disabled states
+│       │   ├── SourceCard.jsx        chapter-line formatting, 4-line excerpt clamp
+│       │   ├── SourceList.jsx        flex: 1 1 0 equal-width card row
+│       │   ├── UserMessage.jsx
+│       │   └── WelcomeState.jsx
+│       ├── lib/
+│       │   ├── streamChat.js         SSE fetch client — partial-frame buffer pattern
+│       │   └── streamChat.test.js    7 vitest tests covering AC 11 + AC 12
+│       └── styles/
+│           └── globals.css           design tokens, Google Fonts, all component CSS
 ├── books shared/            source HTML — COPY'd into /app/books/ at build time
 │   ├── little_women.html
 │   └── pride_prejudice.html
@@ -148,7 +161,8 @@ Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OP
 | 3 | Book ingestion pipeline (parse → cite → embed → store) | ✅ done |
 | 4 Story 1 | RAG logic tier: deps, query_analysis, retrieval, prompts | ✅ done |
 | 4 Story 2 | HTTP layer: `/api/chat` SSE route, `/api/books`, health endpoint | ✅ done (PR open, T4–T6 manual) |
-| 5 | Frontend implementation (components, SSE client, source cards) | pending |
+| 5 Story 1 | Design system + presentational components (globals.css, streamChat.js, 8 UI components) | ✅ done (PR open) |
+| 5 Story 2 | App composition (App.jsx, ChatPanel, MessageList, stateful wiring) | pending |
 | 6 | Integration + Docker smoke tests | pending |
 
 ---
