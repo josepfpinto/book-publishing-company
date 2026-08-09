@@ -87,18 +87,22 @@ book-publishing-company/
 ├── frontend/
 │   ├── eslint.config.js
 │   └── src/
-│       ├── App.jsx          bare stub — Story 2 wires full app state
+│       ├── App.jsx          stateful shell — owns messages[], currentBookContext, isLoading; calls streamChat
 │       ├── main.jsx         entry point — imports globals.css
 │       ├── components/
 │       │   ├── AppHeader.jsx
-│       │   ├── AssistantMessage.jsx  amber left-rule, mono AI label, pulsing dots
+│       │   ├── AssistantMessage.jsx  amber left-rule, dots when !content, text once tokens arrive
 │       │   ├── BookToggle.jsx        3-segment pill with inline SVG book glyph
 │       │   ├── ChatInput.jsx         auto-expanding textarea, two disabled states
+│       │   ├── ChatPanel.jsx         layout shell: CONVERSATION divider + body slot + ChatInput
+│       │   ├── MessageList.jsx       maps messages[] → UserMessage/AssistantMessage/SourceList; auto-scroll sentinel
 │       │   ├── SourceCard.jsx        chapter-line formatting, 4-line excerpt clamp
 │       │   ├── SourceList.jsx        flex: 1 1 0 equal-width card row
 │       │   ├── UserMessage.jsx
 │       │   └── WelcomeState.jsx
 │       ├── lib/
+│       │   ├── messageHelpers.js     pure reducers: applyToken, applySources, applyDone, applyError, buildTimestamp
+│       │   ├── messageHelpers.test.js  7 vitest tests for message state transitions
 │       │   ├── streamChat.js         SSE fetch client — partial-frame buffer pattern
 │       │   └── streamChat.test.js    7 vitest tests covering AC 11 + AC 12
 │       └── styles/
@@ -162,7 +166,7 @@ Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OP
 | 4 Story 1 | RAG logic tier: deps, query_analysis, retrieval, prompts | ✅ done |
 | 4 Story 2 | HTTP layer: `/api/chat` SSE route, `/api/books`, health endpoint | ✅ done (PR open, T4–T6 manual) |
 | 5 Story 1 | Design system + presentational components (globals.css, streamChat.js, 8 UI components) | ✅ done (PR open) |
-| 5 Story 2 | App composition (App.jsx, ChatPanel, MessageList, stateful wiring) | pending |
+| 5 Story 2 | App composition (App.jsx, ChatPanel, MessageList, stateful wiring) | ✅ done (PR open; T4/T5 streaming verify deferred to Phase 6 — needs Vite proxy) |
 | 6 | Integration + Docker smoke tests | pending |
 
 ---
