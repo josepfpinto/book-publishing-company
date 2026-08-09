@@ -11,7 +11,7 @@ Dependency-ordered. Every task is tagged `[MANUAL]` or `[AGENT]` and states its 
 
 ## Tasks
 
-- [ ] **T1** `[AGENT]` Implement SSE error-contract hardening (Gaps A, B, C) in `chat.py` with tests
+- [x] **T1** `[AGENT]` Implement SSE error-contract hardening (Gaps A, B, C) in `chat.py` with tests
   - **Output:** `backend/api/routes/chat.py` has a three-layer error envelope; `backend/tests/test_chat.py` has three new passing tests (one per gap); all existing tests still pass
   - **Complexity:** Standard
   - **Depends on:** —
