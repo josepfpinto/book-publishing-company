@@ -1,4 +1,4 @@
-export default function AssistantMessage({ content, isStreaming, timestamp }) {
+export default function AssistantMessage({ content, timestamp }) {
   return (
     <div className="assistant-message">
       <div className="assistant-message__rule" aria-hidden="true" />
@@ -9,7 +9,7 @@ export default function AssistantMessage({ content, isStreaming, timestamp }) {
             <span className="assistant-message__timestamp">{timestamp}</span>
           )}
         </div>
-        {isStreaming ? (
+        {!content ? (
           <div className="assistant-message__dots" aria-label="Thinking…">
             <span className="assistant-message__dot" />
             <span className="assistant-message__dot" />

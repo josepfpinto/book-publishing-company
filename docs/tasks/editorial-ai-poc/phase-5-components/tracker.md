@@ -3,7 +3,7 @@ name: phase-5-components
 plan: editorial-ai-poc
 phase: "phase-5"
 type: tracker
-status: in_progress
+status: done
 branch: feat/phase-5-components
 code_repo: book-publishing-company
 ---

@@ -443,6 +443,34 @@ body {
   cursor: not-allowed;
 }
 
+/* ── ChatPanel ──────────────────────────────────────────────── */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.chat-panel__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ── MessageList ────────────────────────────────────────────── */
+.message-list {
+  padding: 8px 0 16px;
+}
+
+.message-list__divider {
+  border: none;
+  border-top: 1px solid var(--hairline);
+  margin: 4px 24px;
+}
+
 /* ── Conversation divider ───────────────────────────────────── */
 .conversation-divider {
   display: flex;
