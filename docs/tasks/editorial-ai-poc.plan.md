@@ -22,7 +22,7 @@ todos:
     status: in_progress
   - id: phase-4
     content: "Phase 4: AI Assistant Backend"
-    status: pending
+    status: in_progress
   - id: phase-5
     content: "Phase 5: Frontend Implementation"
     status: pending
@@ -40,6 +40,8 @@ chat_ids:
   - 67c92d07-a8fa-4e5b-9fe4-f7683ba3eb0f
   - 416eed4d-3f1d-49ad-8f76-815f5205e653
   - 919029eb-0049-4b4c-a665-0f1fafe273bc
+  - 85cfa408-0dda-4028-9ee8-89ed5b4a7939
+  - 51fdc930-8c2a-4944-b888-f4c0e0e2ce4c
   [9a13b659-a615-45d3-81b8-2a9a21b1541c, ef4fe7bf-9034-46c5-aefc-5c6d9740a87c]
 ---
 
@@ -326,17 +328,17 @@ col.get(where={"$and": [{"book_id": {"$eq": "pp"}}, {"chapter_number": {"$eq": 2
 
 **Pin `chromadb==1.5.*`, not `0.6.*`.** Not for API reasons — the two are functionally equivalent here — but because 0.6.3 has a telemetry bug that prints `Failed to send telemetry event ...: capture() takes 1 positional argument but 3 were given` to stderr on **every** client/collection/add/get call, and `ANONYMIZED_TELEMETRY=False` does not suppress it. During ingestion and on every chat request that produces continuous error-looking noise in the backend logs — a bad look in an evaluation demo. 1.5.9 is silent.
 
-| Key               | Type | Always?  | Purpose                                                        |
-| ----------------- | ---- | -------- | -------------------------------------------------------------- |
-| `book_id`         | str  | ✅       | `little_women` \| `pride_prejudice` — filter key               |
-| `book_title`      | str  | ✅       | "Little Women" — rendered on every SourceCard                  |
-| `chapter_number`  | int  | ✅       | Makes "what happens in chapter 12" a metadata filter           |
+| Key               | Type | Always?  | Purpose                                                                                    |
+| ----------------- | ---- | -------- | ------------------------------------------------------------------------------------------ |
+| `book_id`         | str  | ✅       | `little_women` \| `pride_prejudice` — filter key                                           |
+| `book_title`      | str  | ✅       | "Little Women" — rendered on every SourceCard                                              |
+| `chapter_number`  | int  | ✅       | Makes "what happens in chapter 12" a metadata filter                                       |
 | `chapter_title`   | str  | ✅       | "Playing Pilgrims" (LW real title); `"Chapter {n}"` for books without chapter titles (P&P) |
-| `chunk_index`     | int  | ✅       | Order within chapter                                           |
-| `page_start`      | str  | P&P only | Print page from `span.pagenum` (1894 Allen ed.)                |
-| `page_end`        | str  | P&P only | Last page the chunk spans                                      |
-| `contains_letter` | bool | ✅       | Chunk sits in `<blockquote>` / `.blockquot` — a letter or note |
-| `excerpt`         | str  | ✅       | Pre-computed ≥ 1 complete sentence for the SourceCard          |
+| `chunk_index`     | int  | ✅       | Order within chapter                                                                       |
+| `page_start`      | str  | P&P only | Print page from `span.pagenum` (1894 Allen ed.)                                            |
+| `page_end`        | str  | P&P only | Last page the chunk spans                                                                  |
+| `contains_letter` | bool | ✅       | Chunk sits in `<blockquote>` / `.blockquot` — a letter or note                             |
+| `excerpt`         | str  | ✅       | Pre-computed ≥ 1 complete sentence for the SourceCard                                      |
 
 **`contains_letter` is the highest-value HTML-only signal.** In P&P the letters are plot-critical (Darcy's, Lydia's, Collins's); in LW they carry much of the sisters' correspondence. Plain-text extraction destroys the distinction — the `<blockquote>` preserves it for free, and it turns "find the letter where Darcy explains Wickham" into a filtered query.
 
@@ -358,17 +360,17 @@ book_title                                                → ALWAYS
 
 Concretely, for the two books in this POC:
 
-| Book              | Card heading                          | Why                          |
-| ----------------- | ------------------------------------- | ---------------------------- |
-| Little Women      | `Chapter 9 — Meg Goes to Vanity Fair` | has real titles, no page numbers |
+| Book              | Card heading                          | Why                                                                       |
+| ----------------- | ------------------------------------- | ------------------------------------------------------------------------- |
+| Little Women      | `Chapter 9 — Meg Goes to Vanity Fair` | has real titles, no page numbers                                          |
 | Pride & Prejudice | `Chapter 26 · pp. 182–183`            | chapter_title is "Chapter 26" (fallback) — dash suppressed; page appended |
-| _(base case)_     | `Chapter 26`                          | fallback title, no page data |
+| _(base case)_     | `Chapter 26`                          | fallback title, no page data                                              |
 
 `Chapter {n}` on its own is a complete, correct citation. `chapter_title` is always stored so downstream code never needs a presence-check — it just reads the field.
 
 **Excerpt rule**: at least one _complete_ sentence, never cut mid-word. Split on sentence boundaries, accumulate **whole sentences** until the excerpt reaches ~80 chars, then stop; append `…` only when genuinely truncated. Stored as the `excerpt` metadata field at ingestion so the frontend never re-derives it.
 
-**There is deliberately no upper length cap.** An earlier `target=230` guard stopped accumulating once the *next* sentence would breach 230 chars — but because the loop already exits the moment the minimum is met, that guard could only ever fire while the excerpt was still _below_ the minimum. Its sole observable effect was emitting sub-minimum excerpts — **58 of 803 chunks**, 26 of them under 40 chars, with six P&P chapters rendering as literally `"Mr.…"`. Removing the guard left the other 745 excerpts byte-identical. A single sentence longer than the minimum is now emitted whole, because truncating it would break the "at least one complete sentence" contract. Measured over both books: **median 140, p95 312, max 655 chars**. `SourceCard` must therefore clamp visually (CSS line-clamp), not rely on a length cap at ingestion.
+**There is deliberately no upper length cap.** An earlier `target=230` guard stopped accumulating once the _next_ sentence would breach 230 chars — but because the loop already exits the moment the minimum is met, that guard could only ever fire while the excerpt was still _below_ the minimum. Its sole observable effect was emitting sub-minimum excerpts — **58 of 803 chunks**, 26 of them under 40 chars, with six P&P chapters rendering as literally `"Mr.…"`. Removing the guard left the other 745 excerpts byte-identical. A single sentence longer than the minimum is now emitted whole, because truncating it would break the "at least one complete sentence" contract. Measured over both books: **median 140, p95 312, max 655 chars**. `SourceCard` must therefore clamp visually (CSS line-clamp), not rely on a length cap at ingestion.
 
 Three cosmetic artifacts observed in the prototype render — all minor, none blocking:
 
@@ -407,9 +409,19 @@ POST /api/chat
 
 ### RAG retrieval
 
-- Embed query with `text-embedding-3-large`
-- Query the `books` collection for top-5 chunks — `where={"book_id": ...}` for a single book, no filter for `"both"`
-- **Prompt on all 5, cite the top 3.** The design renders a maximum of 3 source cards (spec 2.3.4), so the `sources` SSE event carries the 3 best-scoring hits while the model sees 5. Retrieving only 3 is worse for `"both"`, where a single strong book can crowd out the other; showing 5 breaks the card row. The gap is deliberate and worth naming in the deck: the cards are the _primary_ evidence, not an exhaustive audit trail.
+Every request — single-book or cross-book — passes through `core/query_analysis.py` before embedding:
+
+1. **Analyze** — a lightweight non-streaming LLM call (`response_format: json_object`) decides whether the user's message becomes 1 or 2 sub-queries:
+   - `book_id == "both"` → always 2 sub-queries, each tailored to one book and tagged with its `book_id`
+   - Single book → 1 sub-query (refined restatement) unless the question clearly contains 2 separable parts, in which case 2 sub-queries both tagged with the same `book_id`
+   - Parse or API failure → fall back to `[{"query": original_message, "book_id": book_id}]` silently
+
+2. **Embed** — all sub-query strings in one `embed_texts()` call (single embedding API round-trip regardless of sub-query count)
+
+3. **Retrieve** — one ChromaDB `query(n_results=5)` per sub-query, each with `where={"book_id": ...}` matching that sub-query's target. Results across sub-queries are deduplicated by chunk ID (keeping highest score) and sorted descending.
+
+4. **Prompt on top-5, cite top-3** — `context_chunks[:5]` goes to the LLM; `context_chunks[:3]` is the `sources` SSE payload. The design renders a maximum of 3 source cards (spec 2.3.4). Query tailoring (not post-hoc score manipulation) is what provides balance: a sub-query rewritten for Elizabeth Bennet will score P&P chunks highly; one rewritten for Jo March will score LW chunks highly. Both books' top chunks enter the candidate pool naturally.
+
 - Return each cited hit's metadata verbatim as the `sources` payload; the frontend composes the citation line from it (never re-derives excerpts)
 
 ### Conversation history and book scope
@@ -682,7 +694,8 @@ book-publishing-company/
 │   ├── core/
 │   │   ├── ingestion.py         # HTML parsing + chunking logic
 │   │   ├── embeddings.py        # Embedding helper (batch embed)
-│   │   ├── retrieval.py         # ChromaDB query + top-k retrieval
+│   │   ├── query_analysis.py    # Always-on LLM query decomposition (1–2 sub-queries)
+│   │   ├── retrieval.py         # Per-sub-query ChromaDB retrieval + score merge
 │   │   ├── citations.py         # Excerpt builder (>=1 sentence) + heading composer
 │   │   └── prompts.py           # System prompt templates
 │   └── tests/
@@ -724,18 +737,18 @@ book-publishing-company/
 
 ## 8. What is NOT Covered (Deferred)
 
-| Topic                           | Why deferred                                                                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **RAG Depth Spike** (Phase 8)   | Core POC uses basic top-k semantic search — sufficient for requirements. Advanced techniques planned but not needed for demo. |
-| Authentication / sessions       | No auth needed for a local POC with one user                                                                                  |
-| Persistent conversation history | In-memory per-request history only; no DB storage                                                                             |
-| Mobile / responsive UI          | Desktop-first per scope decision                                                                                              |
-| More than 2 books               | Dataset provided is 2 books — ingestion pipeline is generic                                                                   |
+| Topic                                 | Why deferred                                                                                                                                                                                                           |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **RAG Depth Spike** (Phase 8)         | Core POC uses basic top-k semantic search — sufficient for requirements. Advanced techniques planned but not needed for demo.                                                                                          |
+| Authentication / sessions             | No auth needed for a local POC with one user                                                                                                                                                                           |
+| Persistent conversation history       | In-memory per-request history only; no DB storage                                                                                                                                                                      |
+| Mobile / responsive UI                | Desktop-first per scope decision                                                                                                                                                                                       |
+| More than 2 books                     | Dataset provided is 2 books — ingestion pipeline is generic                                                                                                                                                            |
 | Abbreviation-aware sentence splitting | `(?<=[.!?”"])\s+` splits on `Mr.`/`Mrs.`/`Dr.`/`St.`. Cosmetically harmless now that excerpts accumulate to a minimum (§4), but a real tokenizer (`nltk.punkt`, `spaCy`) would be needed to make sentence counts exact |
-| ChromaDB server mode            | Embedded mode is sufficient for local single-backend POC                                                                      |
-| CI/CD                           | Local-only per requirements                                                                                                   |
-| Production deployment           | Local Docker only per requirements                                                                                            |
-| Fine-tuning                     | Out of scope                                                                                                                  |
+| ChromaDB server mode                  | Embedded mode is sufficient for local single-backend POC                                                                                                                                                               |
+| CI/CD                                 | Local-only per requirements                                                                                                                                                                                            |
+| Production deployment                 | Local Docker only per requirements                                                                                                                                                                                     |
+| Fine-tuning                           | Out of scope                                                                                                                                                                                                           |
 
 ---
 
@@ -787,7 +800,7 @@ book-publishing-company/
 - `DONE` Write `backend/requirements.txt` with pinned versions
 - `DONE` Write `frontend/package.json` with Vite + React dependencies
 
-### Phase 3 — Book Ingestion Pipeline
+### Phase 3 — Book Ingestion Pipeline DONE
 
 Delivered across two stories, both `done`: `phase-3-parse-cite` (PR #3) and `phase-3-embed-ingest-verify` (PR #4).
 
@@ -800,14 +813,14 @@ Delivered across two stories, both `done`: `phase-3-parse-cite` (PR #3) and `pha
 
 **Ingestion verification gate** — each assertion maps to a defect actually observed in these files. A bare chunk count would catch none of them:
 
-| #   | Assertion                                                                                                      | Catches                        |
-| --- | -------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| 1   | Chapter count `== 47` (LW) / `== 61` (P&P) **and** numbers are sequential `1..N`                               | Defect 5 — malformed headings  |
-| 2   | No chunk text matches `\{[\divxlcIVXLC]+\}` (both numeral cases — the transcription mixes them)                | Defect 1 — page-number leakage |
-| 3   | No chunk contains `"The Works of Louisa May Alcott"`, `"Transcriber's Note"`, `"Project Gutenberg"`            | Defect 4 — back-matter leakage |
-| 4   | Every chapter's first chunk starts with an uppercase letter or quote mark                                      | Defect 2 — drop-cap loss       |
-| 5   | Every chunk has `book_title`, `chapter_number`, `excerpt`; every `excerpt` ends on sentence punctuation or `…` | Citation contract              |
-| 6   | No metadata value is `None`                                                                                    | Chroma rejects null metadata   |
+| #   | Assertion                                                                                                      | Catches                                                   |
+| --- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | Chapter count `== 47` (LW) / `== 61` (P&P) **and** numbers are sequential `1..N`                               | Defect 5 — malformed headings                             |
+| 2   | No chunk text matches `\{[\divxlcIVXLC]+\}` (both numeral cases — the transcription mixes them)                | Defect 1 — page-number leakage                            |
+| 3   | No chunk contains `"The Works of Louisa May Alcott"`, `"Transcriber's Note"`, `"Project Gutenberg"`            | Defect 4 — back-matter leakage                            |
+| 4   | Every chapter's first chunk starts with an uppercase letter or quote mark                                      | Defect 2 — drop-cap loss                                  |
+| 5   | Every chunk has `book_title`, `chapter_number`, `excerpt`; every `excerpt` ends on sentence punctuation or `…` | Citation contract                                         |
+| 6   | No metadata value is `None`                                                                                    | Chroma rejects null metadata                              |
 | 7   | `chapter_title` is a real title for every LW chapter and exactly `"Chapter {n}"` for every P&P chapter         | Fallback-title contract that `compose_heading()` keys off |
 
 The gate is integration-only by design — it needs the book HTML. Pure-function behaviour (heading composition, the excerpt rule) is covered separately in `tests/test_citations.py`, which runs with no fixtures and cannot be taken down by a missing books directory.
@@ -914,7 +927,7 @@ eval account, negligible for a spike.
 
 - `[INVESTIGATE]` Chunking strategies: fixed-size vs semantic vs sentence-window
 - `[INVESTIGATE]` Hybrid search: BM25 keyword + semantic (RRF fusion) — better for specific passage ID
-- `[INVESTIGATE]` Query decomposition: complex comparison questions → sub-questions → merge
+- `[INVESTIGATE]` Query decomposition (advanced): Phase 4 ships a basic always-on LLM decomposition step (`core/query_analysis.py`) — Phase 8 would explore iterative refinement, multi-hop retrieval, and decomposition quality evaluation
 - `[INVESTIGATE]` Re-ranking: cross-encoder to improve top-k precision
 - `[INVESTIGATE]` Metadata filtering: let users filter by chapter before semantic search
 - `[AGENT]` Implement findings from above investigations

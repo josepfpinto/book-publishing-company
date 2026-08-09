@@ -41,9 +41,12 @@ books shared/*.html
 **Chat (every request):**
 ```
 React  POST /api/chat {book_id, message, history}
-  → embed query (core/embeddings.py)
-  → ChromaDB query top-5 (where book_id filter, or no filter for "both")
-  → GPT-5.1-chat with retrieved passages + scoped system prompt
+  → core/query_analysis.py  analyze_query() → 1–2 sub-queries with book targets
+  → core/embeddings.py      embed each sub-query
+  → core/retrieval.py       retrieve() — one ChromaDB query per sub-query,
+                            dedup by chunk ID (highest score), return top-5 context + top-3 citable
+  → core/prompts.py         build_system_prompt() + build_messages()
+  → GPT chat call with assembled messages
   → SSE stream: tokens → sources event → done event
   → React renders progressively; source cards appear on done
 ```
@@ -56,15 +59,22 @@ React  POST /api/chat {book_id, message, history}
 book-publishing-company/
 ├── backend/
 │   ├── core/
-│   │   ├── ingestion.py     parse_book(), chunk_book(), ingest_book()
-│   │   ├── citations.py     build_excerpt(), compose_heading(), populate_excerpts()
-│   │   └── embeddings.py    embed_texts(texts, batch_size=100)
+│   │   ├── ingestion.py       parse_book(), chunk_book(), ingest_book()
+│   │   ├── citations.py       build_excerpt(), compose_heading(), populate_excerpts()
+│   │   ├── embeddings.py      embed_texts(texts, batch_size=100)
+│   │   ├── query_analysis.py  analyze_query() — LLM-based sub-query decomposition
+│   │   ├── retrieval.py       retrieve() — multi-sub-query ChromaDB retrieval + merge
+│   │   └── prompts.py         build_system_prompt(), build_messages()
 │   ├── api/
-│   │   └── routes/          FastAPI route modules (Phase 4)
-│   ├── ingest.py            one-shot ingestion CLI (not imported by the app)
+│   │   ├── deps.py            FastAPI lifespan — ChromaDB + AzureOpenAI singletons
+│   │   └── routes/            FastAPI route modules (Phase 4 Story 2)
+│   ├── ingest.py              one-shot ingestion CLI (not imported by the app)
 │   ├── tests/
-│   │   ├── test_ingestion.py  7 offline assertions — parser + citation output
-│   │   └── test_citations.py  citation unit tests
+│   │   ├── test_ingestion.py    7 offline assertions — parser + citation output
+│   │   ├── test_citations.py    citation unit tests
+│   │   ├── test_query_analysis.py  analyze_query decomposition + repair logic
+│   │   ├── test_retrieval.py    multi-sub-query retrieval, dedup, score merge
+│   │   └── test_prompts.py      system prompt and message assembly
 │   ├── requirements.txt     runtime deps (fastapi, openai, chromadb, …)
 │   ├── requirements-dev.txt pytest — installed only when INSTALL_DEV=true
 │   └── Dockerfile
@@ -130,6 +140,7 @@ Required `.env` keys: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OP
 |-------|------|--------|
 | 2 | Docker Compose scaffold, FastAPI skeleton, React + Vite skeleton | ✅ done |
 | 3 | Book ingestion pipeline (parse → cite → embed → store) | ✅ done |
-| 4 | AI assistant backend (`/api/chat` SSE, RAG retrieval, prompts) | pending |
+| 4 Story 1 | RAG logic tier: deps, query_analysis, retrieval, prompts | ✅ done |
+| 4 Story 2 | HTTP layer: `/api/chat` SSE route, health endpoint | pending |
 | 5 | Frontend implementation (components, SSE client, source cards) | pending |
 | 6 | Integration + Docker smoke tests | pending |
